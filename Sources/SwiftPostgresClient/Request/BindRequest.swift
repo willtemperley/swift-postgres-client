@@ -3,6 +3,7 @@
 //  PostgresClientKit
 //
 //  Copyright 2019 David Pitfield and the PostgresClientKit contributors
+//  Copyright 2025 Will Temperley and the SwiftPostgresClient contributors
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -21,13 +22,15 @@ import Foundation
 
 struct BindRequest: Request {
     
-    internal init(statement: Statement, parameterValues: [PostgresValueConvertible?]) {
+    private let name: String
+    private let statement: Statement
+    private let parameterValues: [PostgresValueConvertible?]
+    
+    init(name: String, statement: Statement, parameterValues: [PostgresValueConvertible?]) {
+        self.name = name
         self.statement = statement
         self.parameterValues = parameterValues
     }
-    
-    private let statement: Statement
-    private let parameterValues: [PostgresValueConvertible?]
 
     var requestType: Character? {
         return "B"
@@ -35,7 +38,7 @@ struct BindRequest: Request {
     
     var body: Data {
         
-        var body = "".dataZero                          // unnamed destination portal
+        var body = name.dataZero                          // destination portal
         body.append(statement.id.dataZero)              // statement name
         body.append(UInt16(0).data)                     // use default parameter format ("text")
         body.append(UInt16(parameterValues.count).data) // number of parameter values

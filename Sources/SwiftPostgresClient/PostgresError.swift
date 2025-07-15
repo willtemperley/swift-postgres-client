@@ -20,10 +20,12 @@
 /// Errors thrown by PostgresClientKit.
 public enum PostgresError: Error {
     
+    case invalidState(String)
+    
     /// The expected protocol could not be followed
     case protocolError(String)
     
-    case certificateRetrievelFailed
+    case certificateRetrievalFailed
     
     /// The Postgres server requires a `Credential.cleartextPassword` for authentication.
     case cleartextPasswordCredentialRequired

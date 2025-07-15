@@ -1,8 +1,8 @@
 //
-//  ClosePortalRequest.swift
-//  PostgresClientKit
+//  AuthenticationState.swift
+//  SwiftPostgresClient
 //
-//  Copyright 2019 David Pitfield and the PostgresClientKit contributors
+//  Copyright 2025 Will Temperley and the SwiftPostgresClient contributors.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -19,15 +19,14 @@
 
 import Foundation
 
-struct ClosePortalRequest: Request {
-    
-    var requestType: Character? {
-        return "C"
-    }
-    
-    var body: Data {
-        var body = "P".data         // for "portal"
-        body.append("".dataZero)    // the unnamed portal
-        return body
-    }
+enum AuthenticationState {
+    case start
+    case awaitingCleartextPassword(String)
+    case awaitingMd5Password(String, [UInt8])
+    case awaitingSaslInitial([String])
+    case awaitingSaslContinue(SCRAMSHA256Authenticator)
+    case awaitingSaslFinal(SCRAMSHA256Authenticator)
+    case awaitingOK
+    case done
 }
+

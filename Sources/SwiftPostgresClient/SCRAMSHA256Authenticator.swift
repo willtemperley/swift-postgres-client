@@ -20,7 +20,7 @@
 import Foundation
 
 /// Performs SCRAM-SHA-256 authentication (RFC 7677).
-internal class SCRAMSHA256Authenticator {
+class SCRAMSHA256Authenticator {
     
     /// Creates a `SCRAMSHA256Authenticator`.
     ///

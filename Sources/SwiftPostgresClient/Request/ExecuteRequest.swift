@@ -1,5 +1,5 @@
 //
-//  CommandCompleteResponse.swift
+//  ExecuteRequest.swift
 //  PostgresClientKit
 //
 //  Copyright 2019 David Pitfield and the PostgresClientKit contributors
@@ -17,23 +17,31 @@
 //  limitations under the License.
 //
 
-struct CommandCompleteResponse: Response {
+import Foundation
+
+struct ExecuteRequest: Request {
     
-    var responseType: Character { "C" }
+    private let statement: Statement
     
-    init(responseBody: ResponseBody) throws {
-        
-        assert(responseBody.responseType == "C")
-        
-        var responseBody = responseBody
-        commandTag = try responseBody.readNullTerminatedString()
-        
-        try responseBody.verifyFullyConsumed()
+    private let portalName: String
+
+    init(portalName: String, statement: Statement) {
+        self.statement = statement
+        self.portalName = portalName
     }
     
-    internal let commandTag: String
+    //
+    // MARK: Request
+    //
     
-    var description: String {
-        "CommandCompleteResponse (commandTag: \(commandTag))"
+    var requestType: Character? {
+        return "E"
     }
+    
+    var body: Data {
+        var body = portalName.dataZero      // unnamed destination portal
+        body.append(UInt32(0).data) // no row limit
+        return body
+    }
+    
 }

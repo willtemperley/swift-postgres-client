@@ -1,5 +1,5 @@
 //
-//  ExecuteRequest.swift
+//  ClosePortalRequest.swift
 //  PostgresClientKit
 //
 //  Copyright 2019 David Pitfield and the PostgresClientKit contributors
@@ -19,27 +19,17 @@
 
 import Foundation
 
-struct ExecuteRequest: Request {
-    
-    init(statement: Statement) {
-        self.statement = statement
-    }
-    
-    private let statement: Statement
-    
-    
-    //
-    // MARK: Request
-    //
+struct ClosePortalRequest: Request {
     
     var requestType: Character? {
-        return "E"
+        return "C"
     }
+    
+    let name: String
     
     var body: Data {
-        var body = "".dataZero      // unnamed destination portal
-        body.append(UInt32(0).data) // no row limit
+        var body = "P".data         // for "portal"
+        body.append(name.dataZero)    // the unnamed portal
         return body
     }
-    
 }

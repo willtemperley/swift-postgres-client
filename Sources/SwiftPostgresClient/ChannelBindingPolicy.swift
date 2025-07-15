@@ -1,7 +1,8 @@
-// ChannelBindingPolicy.swift
-// PostgresClientKit
 //
-//  Copyright 2025 Will Temperley and the PostgresClientKit contributors
+//  ChannelBindingPolicy.swift
+//  SwiftPostgresClient
+//
+//  Copyright 2025 Will Temperley and the SwiftPostgresClient contributors
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.

@@ -17,7 +17,7 @@
 //  limitations under the License.
 //
 
-internal extension String {
+extension String {
     
     /// Gets the SASLPrep (RFC 4013) transformation of this `String`.
     ///

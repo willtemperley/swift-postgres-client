@@ -17,10 +17,9 @@
 //  limitations under the License.
 //
 
+@testable import SwiftPostgresClient
 import Testing
 import Foundation
-
-@testable import SwiftPostgresClient
 
 struct ISO8601Test {
     

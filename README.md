@@ -11,24 +11,25 @@
   
 </p>
 
-This project has been adapted from PostgresClientKit. While the 
+This project has been adapted from PostgresClientKit, with the following changes:
 
-- Designed to be fully asynchronous, compatible with Swift 6 concurrency. 
-- The network backend uses Apple’s Network.framework, removing Kitura BlueSocket and BlueSSLService dependencies which are no longer supported. 
+- Designed to be fully asynchronous, compatible with Swift 6 structured concurrency.
+- The network backend now uses Apple’s Network.framework, removing Kitura BlueSocket and BlueSSLService dependencies which are no longer supported. 
 - Channel binding support has been enabled, significantly improving security. 
 - Non-TLS connection support has been removed.
+- All requests and responses are struct based instead of classes.
+- When using extended query mode, queries execute on named portals instead of the default portal.
+- Tests have been migrated from XCTest to Swift Testing.
 
 ## Features
 
-- **Doesn't require libpq.**  PostgresClientKit implements the Postgres network protocol in Swift, so it does not require `libpq`.
+- **Doesn't require libpq.**  SwiftPostgresClient implements the Postgres network protocol in Swift, so it does not require `libpq`.
 
-- **Developer-friendly API using modern Swift.**  For example, errors are represented by instances of `enum PostgresError: Error` and are raised by a `throw` or by returning a [`Result<Success, Error>`](https://github.com/apple/swift-evolution/blob/master/proposals/0235-add-result.md).
+- **Fully concurrent, asynchronous API.**  Query results are exposed as `AsyncSequence`s. Connections are stateful and modeled as actors, allowing protocol-level messages to be received concurrently on one task while results are processed by client code on another.  This design ensures high performance and thread safety without explicit locking.
 
-- **Safe conversion between Postgres and Swift types.** Type conversion is explicit and robust.  Conversion errors are signaled, not masked.  PostgresClientKit provides additional Swift types for dates and times to address the impedance mismatch between Postgres types and Foundation `Date`.
+- **Safe conversion between Postgres and Swift types.** Type conversion is explicit and robust.  Conversion errors are signaled, not masked. These were adapted from PostgresClientKit, providing additional Swift types for dates and times to address the impedance mismatch between Postgres types and Foundation `Date`.
 
-- **Memory efficient.** The rows in a result are exposed through an iterator, not an array.  Rows are lazily retrieved from the Postgres server.
-
-- **SSL/TLS support.** Encrypts the connection between PostgresClientKit and the Postgres server.
+- **SSL/TLS support.** Encrypts the connection between SwiftPostgresClient and the Postgres server.
 
 - **Channel binding support.** A security feature for SCRAM-SHA-256 authentication over TLS, channel binding links the TLS session to the authentication exchange, protecting against man-in-the-middle (MitM) attacks.
 
@@ -39,42 +40,40 @@ Sounds good?  Let's look at an example.
 This is a basic, but complete, example of how to connect to Postgres, perform a SQL `SELECT` command, and process the resulting rows.  It uses the `weather` table in the [Postgres tutorial](https://www.postgresql.org/docs/11/tutorial-table.html).
 
 ```swift
-import PostgresClientKit
+import SwiftPostgresClient
 
-do {
-    var configuration = PostgresClientKit.ConnectionConfiguration()
-    configuration.host = "127.0.0.1"
-    configuration.database = "example"
-    configuration.user = "bob"
-    configuration.credential = .scramSHA256(password: "welcome1")
-    configuration.channelBindingPolicy = .required // Enforce channel binding. Defaults to preferred.
+// Connect on the default port, returning a connection actor
+let connection = try await Connection.connect(host: "localhost")
 
-    let connection = try PostgresClientKit.Connection(configuration: configuration)
-    defer { connection.close() }
+// Connect using TLS and SCRAM, enforcing channel binding
+let credential: Credential = .scramSHA256(password: "welcome1", channelBindingPolicy: .required)
+try await connection.authenticate(user: "bob", database: "postgres", credential: credential)
 
-    let text = "SELECT city, temp_lo, temp_hi, prcp, date FROM weather WHERE city = $1;"
-    let statement = try connection.prepareStatement(text: text)
-    defer { statement.close() }
+// Prepare a statement
+let text = "SELECT city, temp_lo, temp_hi, prcp, date FROM weather WHERE city = $1;"
+let statement = try await connection.prepareStatement(query: text)
 
-    let cursor = try statement.execute(parameterValues: [ "San Francisco" ])
-    defer { cursor.close() }
+// Bind the statement within a named portal. Naming is handled automatically.
+let portal = try await statement.bind(parameterValues: ["San Francisco"])
 
-    for row in cursor {
-        let columns = try row.get().columns
-        let city = try columns[0].string()
-        let tempLo = try columns[1].int()
-        let tempHi = try columns[2].int()
-        let prcp = try columns[3].optionalDouble()
-        let date = try columns[4].date()
-    
-        print("""
-            \(city) on \(date): low: \(tempLo), high: \(tempHi), \
-            precipitation: \(String(describing: prcp))
-            """)
-    }
-} catch {
-    print(error) // better error handling goes here
+// Obtain an AsyncSequence from the portal and iterate the results
+let cursor = try await portal.execute()
+
+
+for try await row in cursor {
+  let columns = row.columns
+  let city = try columns[0].string()
+  let tempLo = try columns[1].int()
+  let tempHi = try columns[2].int()
+  let prcp = try columns[3].optionalDouble()
+  let date = try columns[4].date()
+   print("""
+    \(city) on \(date): low: \(tempLo), high: \(tempHi), \
+    precipitation: \(String(describing: prcp))
+   """)
 }
+
+let rowCount = await cursor.rowCount
 ```
 
 Output:
@@ -97,7 +96,7 @@ The channel binding policy can be configured as either:
 
 ## Prerequisites
 
-- **Swift 5 or later**  (PostgresClientKit uses Swift 5 language features)
+- **Swift 5.5 or later**  (PostgresClientKit uses Swift 5.5 structured concurrency)
 
 This fork of PostgresClientKit is compatible with macOS and iOS.
 It has only been tested on Postgres 17.

@@ -25,7 +25,7 @@ import Foundation
 /// Refer to the associated public APIs for further information:
 /// - `Row.decodeByColumnName(_:defaultTimeZone:)`
 /// - `Row.decodeByColumnIndex(_:defaultTimeZone:)`
-internal class RowDecoder {
+struct RowDecoder: Sendable {
     
     /// Creates a `RowDecoder`.
     ///
@@ -45,7 +45,7 @@ internal class RowDecoder {
     
     /// A map of columns' names (either explicitly provided by column metadata or inferred from the
     /// decoding order) to the indices of those columns' values.
-    private let columnIndices = ColumnIndices()
+    private var columnIndices = ColumnIndices()
     
     /// Decodes a row to create an instance of the specified type.
     ///
@@ -64,7 +64,7 @@ internal class RowDecoder {
                                        defaultTimeZone: defaultTimeZone))
     }
     
-    private class ColumnIndices {
+    private struct ColumnIndices: Sendable {
         
         // Postgres lowercases unquoted identifiers.  We similarly lowercase column names here,
         // making comparisons case-insensitive (for example, "birthdate" matches "birthDate").
@@ -72,7 +72,7 @@ internal class RowDecoder {
         // Note that a `Cursor` may have duplicated column names, so `indices.count` may not be
         // equal to `count`.
         
-        func addColumn(name: String) -> Int {
+        mutating func addColumn(name: String) -> Int {
             let index = count
             indices[name.lowercased()] = index
             count += 1
@@ -102,7 +102,7 @@ internal class RowDecoder {
             self.defaultTimeZone = defaultTimeZone
         }
         
-        let outer: RowDecoder
+        var outer: RowDecoder
         let postgresValues: [PostgresValue]
         let defaultTimeZone: TimeZone
         
