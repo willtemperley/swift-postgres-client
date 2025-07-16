@@ -36,7 +36,7 @@ public struct BasicConnectionTests {
         let statement = try await connection.prepareStatement(text: text)
         let portal = try await statement.bind(parameterValues: ["San Francisco"])
 
-        let cursor = try await portal.execute()
+        let cursor = try await portal.query()
 
         for try await row in cursor {
           let columns = row.columns
@@ -68,7 +68,7 @@ public struct BasicConnectionTests {
         let statement = try await connection.prepareStatement(text: text)
         let portal = try await statement.bind(parameterValues: ["San Francisco"])
         
-        let cursor = try await portal.execute()
+        let cursor = try await portal.query()
         
         var count = 0
         for try await row in cursor {
@@ -96,7 +96,7 @@ public struct BasicConnectionTests {
         
         // Reuse the same statement with a different portal
         let portal2 = try await statement.bind(parameterValues: ["Hayward"])
-        let cursor2 = try await portal2.execute()
+        let cursor2 = try await portal2.query()
         for try await row in cursor2 {
             count += 1
             print(row)
@@ -121,8 +121,7 @@ public struct BasicConnectionTests {
             try await connection.withTransaction {
                 let statement = try await connection.prepareStatement(text: "INSERT INTO notes (text) VALUES ($1)")
                 let portal = try await statement.bind(parameterValues: ["Hello, world"])
-                // FIXME: need a separate command that drains the cursor
-                for try await _ in try await portal.execute() { }
+                _ = try await portal.execute()
             }
         }
         
@@ -142,10 +141,11 @@ public struct BasicConnectionTests {
         try await connection.withTransaction {
             let statement = try await connection.prepareStatement(text: "INSERT INTO notes (text) VALUES ($1)")
             
-            let portal = try await statement.bind(parameterValues: ["Hello, world"])
-            
-            // FIXME: need a separate command
-            for try await _ in try await portal.execute() { }
+            for _ in 0..<5 {
+                let portal = try await statement.bind(parameterValues: ["Hello, world"])
+                let status = try await portal.execute()
+                #expect(status.rowCount == 1)
+            }
         }
     }
     

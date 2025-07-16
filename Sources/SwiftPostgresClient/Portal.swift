@@ -35,7 +35,7 @@ public struct Portal {
     /// Executes the associated prepared statement with already bound parameters.
     ///
     /// - Returns: an `AsyncSequence` of rows. This is a single use iterator.
-    func execute() async throws -> ResultCursor {
+    func query() async throws -> ResultCursor {
         
         // TODO: Max rows
         let executeRequest = ExecuteRequest(portalName: name, statement: statement)
@@ -45,6 +45,19 @@ public struct Portal {
         try await connection.sendRequest(flushRequest)
         
         return ResultCursor(connection: connection, portalName: name, rowDecoder: rowDecoder)
+    }
+    
+    @discardableResult
+    func execute() async throws -> CommandStatus {
+        
+        let executeRequest = ExecuteRequest(portalName: name, statement: statement)
+        try await connection.sendRequest(executeRequest)
+        let flushRequest = FlushRequest()
+        try await connection.sendRequest(flushRequest)
+
+        let response = try await connection.receiveResponse(type: CommandCompleteResponse.self)
+        try await connection.cleanupPortal(name: name)
+        return response.status
     }
 }
 

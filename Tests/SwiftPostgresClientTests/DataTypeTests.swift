@@ -19,210 +19,214 @@
 
 @testable import SwiftPostgresClient
 import Testing
+import Foundation
 
 /// Tests roundtripping PostgresValue -> Postgres server data types -> PostgresValue.
-//struct DataTypeTest {
-//    
-//    let config = ConnectionConfigurations()
-//    
-//    @Test
-//    func test() async {
-//        
-//        let connectionConfig = config.terryConnectionConfiguration
-//
-//        do {
-//            let connection = try await Connection.connect(host: connectionConfig.host, port: connectionConfig.port)
-//            try await connection.authenticate(user: connectionConfig.user, database: connectionConfig.database, credential: connectionConfig.credential)
-//
-//            var text = "DROP TABLE IF EXISTS datatypetest"
-//            try await connection.prepareStatement(query: text)
-//
-//            text = """
-//                CREATE TABLE datatypetest (
-//                    sequence    integer,
-//                    cv          character varying(80),
-//                    c           character(10),
-//                    i           integer,
-//                    si          smallint,
-//                    bi          bigint,
-//                    dp          double precision,
-//                    r           real,
-//                    n           numeric,
-//                    b           boolean,
-//                    tstz        timestamp with time zone,
-//                    ts          timestamp,
-//                    d           date,
-//                    t           time,
-//                    ttz         time with time zone,
-//                    ba          bytea
-//                )
-//                """
-//            try connection.prepareStatement(text: text).execute()
-//
-//            var lastSequence = 0
-//
-//            func check(_ column: String, _ value: PostgresValueConvertible) {
-//
-//                do {
-//                    lastSequence += 1
-//
-//                    var text = "INSERT INTO datatypetest (sequence, \(column)) VALUES ($1, $2)"
-//
-//                    try connection
-//                        .prepareStatement(text: text)
-//                        .execute(parameterValues: [ lastSequence, value ])
-//
-//                    text = "SELECT \(column) FROM datatypetest WHERE sequence = $1"
-//
-//                    let readValue = try connection
-//                        .prepareStatement(text: text)
-//                        .execute(parameterValues: [ lastSequence ])
-//                        .next()!.get().columns[0]
-//
-//                    switch value {
-//
-//                    case let value as String:
-//                        XCTAssertEqual(try readValue.string(), value, column)
-//
-//                    case let value as Int:
-//                        XCTAssertEqual(try readValue.int(), value, column)
-//
-//                    case let value as Double:
-//                        if value.isNaN {
-//                            XCTAssert(try readValue.double().isNaN, column)
-//                        } else {
-//                            XCTAssertEqual(try readValue.double(), value, column)
-//                        }
-//
-//                    case let value as Decimal:
-//                        XCTAssertEqual(try readValue.decimal(), value, column)
-//
-//                    case let value as Bool:
-//                        XCTAssertEqual(try readValue.bool(), value, column)
-//
-//                    case let value as PostgresTimestampWithTimeZone:
-//                        XCTAssertEqual(try readValue.timestampWithTimeZone(), value, column)
-//
-//                    case let value as PostgresTimestamp:
-//                        XCTAssertEqual(try readValue.timestamp(), value, column)
-//
-//                    case let value as PostgresDate:
-//                        XCTAssertEqual(try readValue.date(), value, column)
-//
-//                    case let value as PostgresTime:
-//                        XCTAssertEqual(try readValue.time(), value, column)
-//
-//                    case let value as PostgresTimeWithTimeZone:
-//                        XCTAssertEqual(try readValue.timeWithTimeZone(), value, column)
-//
-//                    case let value as PostgresByteA:
-//                        XCTAssertEqual(try readValue.byteA(), value, column)
-//
-//                    default: XCTFail("Unexpected type: \(type(of: value))")
-//                    }
-//                } catch {
-//                    XCTFail(String(describing: error))
-//                }
-//            }
-//
-//            // character varying
-//            check("cv", "")
-//            check("cv", "hello")
-//            check("cv", "你好世界")
-//            check("cv", "🐶🐮")
-//
-//            // character
-//            check("c", "          ")
-//            check("c", "hello     ")
-//            check("c", "你好世界      ")
-//            check("c", "🐶🐮        ")
-//
-//            // int
-//            check("i", 0)
-//            check("i", 314)
-//            check("i", -314)
-//
-//            // smallint
-//            check("si", 0)
-//            check("si", 314)
-//            check("si", -314)
-//
-//            // bigint
-//            check("bi", 0)
-//            check("bi", 314)
-//            check("bi", -314)
-//
-//            // double precision
-//            check("dp", -314.0)
-//            check("dp", -1003.14159)
-//            check("dp", 6.02e+23)
-//            check("dp", 1.6021765e-19)
-//            check("dp", Double.infinity)
-//            check("dp", Double.signalingNaN)
-//
-//            // real
-//            check("r", -314.0)
-//            check("r", -1003.14)
-//            check("r", 6.02e+23)
-//            check("r", 1.60218e-19)
-//            check("r", Double.infinity)
-//            check("r", Double.signalingNaN)
-//
-//            // numeric
-//            check("n", Decimal(string: "1234.0"))
-//            check("n", Decimal(string: "+0001234.4321000"))
-//            check("n", Decimal(string: "-12345678987654321.98765432123456789"))
-//            check("n", Decimal.nan)
-//            check("n", Decimal.quietNaN)
-//
-//            // boolean
-//            check("b", true)
-//            check("b", false)
-//
-//            // timestamp with time zone
-//            check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.006-08"))
-//            check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.06-08"))
-//            check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.6-08"))
-//            check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05-08"))
-//            check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.365+130"))
-//
-//            // timestamp
-//            check("ts", PostgresTimestamp("2019-01-02 03:04:05.006"))
-//            check("ts", PostgresTimestamp("2019-01-02 03:04:05.06"))
-//            check("ts", PostgresTimestamp("2019-01-02 03:04:05.6"))
-//            check("ts", PostgresTimestamp("2019-01-02 03:04:05"))
-//
-//            // date
-//            check("d", PostgresDate("2019-01-02"))
-//
-//            // time
-//            check("t", PostgresTime("03:04:05.006"))
-//            check("t", PostgresTime("03:04:05.06"))
-//            check("t", PostgresTime("03:04:05.6"))
-//            check("t", PostgresTime("03:04:05"))
-//
-//            // time with time zone
-//            check("ttz", PostgresTimeWithTimeZone("03:04:05.006-08:00"))
-//            check("ttz", PostgresTimeWithTimeZone("03:04:05.06-08:00"))
-//            check("ttz", PostgresTimeWithTimeZone("03:04:05.6-08:00"))
-//            check("ttz", PostgresTimeWithTimeZone("03:04:05-08:00"))
-//            check("ttz", PostgresTimeWithTimeZone("03:04:05.365+1:30"))
-//
-//            // bytea
-//            check("ba", PostgresByteA("\\xDEADBEEF"))
-//
-//            var bs = [UInt8]()
-//
-//            for _ in 0..<1_000_000 {
-//                bs.append(UInt8.random(in: 0...255))
-//            }
-//
-//            let data = Data(bs)
-//
-//            check("ba", PostgresByteA(data: data))
-//
-//        } catch {
-//            XCTFail(String(describing: error))
-//        }
-//    }
-//}
+struct DataTypeTest {
+    
+    let config = ConnectionConfigurations()
+    
+    @Test
+    func test() async {
+        
+        let connectionConfig = config.terryConnectionConfiguration
+
+        do {
+            let connection = try await Connection.connect(host: connectionConfig.host, port: connectionConfig.port)
+            try await connection.authenticate(user: connectionConfig.user, database: connectionConfig.database, credential: connectionConfig.credential)
+
+            var text = "DROP TABLE IF EXISTS datatypetest"
+            try await connection.executeSimpleQuery(text)
+
+            text = """
+                CREATE TABLE datatypetest (
+                    sequence    integer,
+                    cv          character varying(80),
+                    c           character(10),
+                    i           integer,
+                    si          smallint,
+                    bi          bigint,
+                    dp          double precision,
+                    r           real,
+                    n           numeric,
+                    b           boolean,
+                    tstz        timestamp with time zone,
+                    ts          timestamp,
+                    d           date,
+                    t           time,
+                    ttz         time with time zone,
+                    ba          bytea
+                )
+                """
+            try await connection.executeSimpleQuery(text)
+
+            var lastSequence = 0
+
+            func check(_ column: String, _ value: PostgresValueConvertible) async {
+
+                do {
+                    lastSequence += 1
+
+                    var text = "INSERT INTO datatypetest (sequence, \(column)) VALUES ($1, $2)"
+
+                    try await connection
+                        .prepareStatement(text: text)
+                        .bind(parameterValues: [ lastSequence, value ])
+                        .execute()
+
+                    text = "SELECT \(column) FROM datatypetest WHERE sequence = $1"
+
+                    let cursor = try await connection
+                        .prepareStatement(text: text)
+                        .bind(parameterValues: [ lastSequence ])
+                        .query()
+                    
+                    let readValue = try await cursor.reduce(nil) { _, row in row.columns[0] }!
+
+                    switch value {
+
+                    case let value as String:
+                        #expect(try readValue.string() == value, "\(column)")
+
+                    case let value as Int:
+                        #expect(try readValue.int() == value, "\(column)")
+
+                    case let value as Double:
+                        if value.isNaN {
+                            #expect(try readValue.double().isNaN, "\(column)")
+                        } else {
+                            #expect(try readValue.double() == value, "\(column)")
+                        }
+
+                    case let value as Decimal:
+                        #expect(try readValue.decimal() == value, "\(column)")
+
+                    case let value as Bool:
+                        #expect(try readValue.bool() == value, "\(column)")
+
+                    case let value as PostgresTimestampWithTimeZone:
+                        #expect(try readValue.timestampWithTimeZone() == value, "\(column)")
+
+                    case let value as PostgresTimestamp:
+                        #expect(try readValue.timestamp() == value, "\(column)")
+
+                    case let value as PostgresDate:
+                        #expect(try readValue.date() == value, "\(column)")
+
+                    case let value as PostgresTime:
+                        #expect(try readValue.time() == value, "\(column)")
+
+                    case let value as PostgresTimeWithTimeZone:
+                        #expect(try readValue.timeWithTimeZone() == value, "\(column)")
+
+                    case let value as PostgresByteA:
+                        #expect(try readValue.byteA() ==    value, "\(column)")
+
+                    default: Issue.record("Unexpected type: \(type(of: value))")
+                    }
+                } catch {
+                    Issue.record(error)
+                }
+            }
+
+            // character varying
+            await check("cv", "")
+            await check("cv", "hello")
+            await check("cv", "你好世界")
+            await check("cv", "🐶🐮")
+
+            // character
+            await check("c", "          ")
+            await check("c", "hello     ")
+            await check("c", "你好世界      ")
+            await check("c", "🐶🐮        ")
+
+            // int
+            await check("i", 0)
+            await check("i", 314)
+            await check("i", -314)
+
+            // smallint
+            await check("si", 0)
+            await check("si", 314)
+            await check("si", -314)
+
+            // bigint
+            await check("bi", 0)
+            await check("bi", 314)
+            await check("bi", -314)
+
+            // double precision
+            await check("dp", -314.0)
+            await check("dp", -1003.14159)
+            await check("dp", 6.02e+23)
+            await check("dp", 1.6021765e-19)
+            await check("dp", Double.infinity)
+            await check("dp", Double.signalingNaN)
+
+            // real
+            await check("r", -314.0)
+            await check("r", -1003.14)
+            await check("r", 6.02e+23)
+            await check("r", 1.60218e-19)
+            await check("r", Double.infinity)
+            await check("r", Double.signalingNaN)
+
+            // numeric
+            await check("n", Decimal(string: "1234.0"))
+            await check("n", Decimal(string: "+0001234.4321000"))
+            await check("n", Decimal(string: "-12345678987654321.98765432123456789"))
+            await check("n", Decimal.nan)
+            await check("n", Decimal.quietNaN)
+
+            // boolean
+            await check("b", true)
+            await check("b", false)
+
+            // timestamp with time zone
+            await check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.006-08"))
+            await check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.06-08"))
+            await check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.6-08"))
+            await check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05-08"))
+            await check("tstz", PostgresTimestampWithTimeZone("2019-01-02 03:04:05.365+130"))
+
+            // timestamp
+            await check("ts", PostgresTimestamp("2019-01-02 03:04:05.006"))
+            await check("ts", PostgresTimestamp("2019-01-02 03:04:05.06"))
+            await check("ts", PostgresTimestamp("2019-01-02 03:04:05.6"))
+            await check("ts", PostgresTimestamp("2019-01-02 03:04:05"))
+
+            // date
+            await check("d", PostgresDate("2019-01-02"))
+
+            // time
+            await check("t", PostgresTime("03:04:05.006"))
+            await check("t", PostgresTime("03:04:05.06"))
+            await check("t", PostgresTime("03:04:05.6"))
+            await check("t", PostgresTime("03:04:05"))
+
+            // time with time zone
+            await check("ttz", PostgresTimeWithTimeZone("03:04:05.006-08:00"))
+            await check("ttz", PostgresTimeWithTimeZone("03:04:05.06-08:00"))
+            await check("ttz", PostgresTimeWithTimeZone("03:04:05.6-08:00"))
+            await check("ttz", PostgresTimeWithTimeZone("03:04:05-08:00"))
+            await check("ttz", PostgresTimeWithTimeZone("03:04:05.365+1:30"))
+
+            // bytea
+            await check("ba", PostgresByteA("\\xDEADBEEF"))
+
+            var bs = [UInt8]()
+
+            for _ in 0..<1_000_000 {
+                bs.append(UInt8.random(in: 0...255))
+            }
+
+            let data = Data(bs)
+
+            await check("ba", PostgresByteA(data: data))
+
+        } catch {
+            Issue.record(error)
+        }
+    }
+}
