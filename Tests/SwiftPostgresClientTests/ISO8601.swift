@@ -23,8 +23,6 @@ import Foundation
 
 struct ISO8601Test {
     
-    let config = ConnectionConfigurations()
-    
     @Test
     func parseTimestampWithTimeZone() {
                 
@@ -45,9 +43,9 @@ struct ISO8601Test {
             expectedDateComponents.minute = minute
             expectedDateComponents.second = second
             expectedDateComponents.nanosecond = nanosecond
-            let expectedDate = config.enUsPosixUtcCalendar.date(from: expectedDateComponents)!
+            let expectedDate = enUsPosixUtcCalendar.date(from: expectedDateComponents)!
             
-            config.XCTAssertApproximatelyEqual(date!, expectedDate)
+            assertApproximatelyEqual(date!, expectedDate)
         }
         
         func checkInvalid(_ string: String) {
@@ -167,7 +165,7 @@ struct ISO8601Test {
             expectedDateComponents.second = second
             expectedDateComponents.nanosecond = nanosecond
             
-            config.XCTAssertApproximatelyEqual(dateComponents!, expectedDateComponents)
+            assertApproximatelyEqual(dateComponents!, expectedDateComponents)
         }
         
         func checkInvalid(_ string: String) {
@@ -240,7 +238,7 @@ struct ISO8601Test {
             expectedDateComponents.month = month
             expectedDateComponents.day = day
             
-            config.XCTAssertApproximatelyEqual(dateComponents!, expectedDateComponents)
+            assertApproximatelyEqual(dateComponents!, expectedDateComponents)
         }
         
         func checkInvalid(_ string: String) {
@@ -290,7 +288,7 @@ struct ISO8601Test {
             expectedDateComponents.second = second
             expectedDateComponents.nanosecond = nanosecond
             
-            config.XCTAssertApproximatelyEqual(dateComponents!, expectedDateComponents)
+            assertApproximatelyEqual(dateComponents!, expectedDateComponents)
         }
         
         func checkInvalid(_ string: String) {
@@ -351,14 +349,14 @@ struct ISO8601Test {
             expectedDateComponents.nanosecond = nanosecond
             expectedDateComponents.timeZone = timeZone
             
-            config.XCTAssertApproximatelyEqual(dateComponents!, expectedDateComponents)
+            assertApproximatelyEqual(dateComponents!, expectedDateComponents)
         }
         
         func checkInvalid(_ string: String) {
             #expect(ISO8601.parseTimeWithTimeZone(string) == nil)
         }
         
-        let tzUTC = config.utcTimeZone
+        let tzUTC = utcTimeZone
         let tzPlus0100 = TimeZone(secondsFromGMT: 3600)!
         let tzPlus0145 = TimeZone(secondsFromGMT: 6300)!
         let tzPlus1200 = TimeZone(secondsFromGMT: 43200)!
@@ -559,10 +557,10 @@ struct ISO8601Test {
             expectedDateComponents.second = second
             expectedDateComponents.nanosecond = nanosecond
             
-            config.XCTAssertApproximatelyEqual(dateComponents, expectedDateComponents)
+            assertApproximatelyEqual(dateComponents, expectedDateComponents)
         }
         
-        let tzUTC = config.utcTimeZone
+        let tzUTC = utcTimeZone
         let tzPlus0100 = TimeZone(secondsFromGMT: 3600)!
         let tzMinus0100 = TimeZone(secondsFromGMT: -3600)!
         
@@ -574,7 +572,7 @@ struct ISO8601Test {
     @Test
     func timeZoneHasFixedOffset() {
 
-        let tzUTC = config.utcTimeZone
+        let tzUTC = utcTimeZone
         let tzPlus0100 = TimeZone(secondsFromGMT: 3600)!
         let tzMinus0100 = TimeZone(secondsFromGMT: -3600)!
         let tzLosAngeles = TimeZone(identifier: "America/Los_Angeles")!

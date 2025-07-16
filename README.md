@@ -6,9 +6,6 @@
   <img src="https://img.shields.io/badge/os-macOS-green.svg">
   <img src="https://img.shields.io/badge/os-iOS-green.svg">  
   
-  <img src="https://img.shields.io/github/release/codewinsdotcom/PostgresClientKit.svg">
-  <img src="https://img.shields.io/github/license/codewinsdotcom/PostgresClientKit.svg">
-  
 </p>
 
 This project has been adapted from PostgresClientKit, with the following changes:
@@ -84,7 +81,7 @@ San Francisco on 1994-11-29: low: 43, high: 57, precipitation: Optional(0.0)
 
 ## Channel binding
 
-Channel binding is only relevant when using SCRAM-SHA-256 SASL authentication.
+This is only relevant when using SCRAM-SHA-256 SASL authentication.
 
 The channel binding policy can be configured as either:
 
@@ -108,123 +105,14 @@ swift package clean
 swift build
 ```
 
-## Testing
-
-[Set up a Postgres database for testing](https://github.com/codewinsdotcom/PostgresClientKit/blob/master/Docs/setting_up_a_postgres_database_for_testing.md).  This is a one-time process.
-
-Then:
-
-```
-cd <path-to-clone>
-swift package clean
-swift build
-swift test
-```
-
-## Using
-
-### From an Xcode project (as a package dependency)
-
-In Xcode:
-
-- Select File > Add Packages...
-
-- Enter the package URL: `https://github.com/codewinsdotcom/PostgresClientKit`
-
-- Set the package version requirements (see [Decide on Package Requirements](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app)).  For example, choose `Up To Next Major Version` and `1.0.0` to select the latest 1.x.x release of PostgresClientKit.
-
-- Click Add Package.
-
-Import to your source code file:
-
-```swift
-import PostgresClientKit
-```
-
-### From a standalone Swift package (`Package.swift`)
-
-In your `Package.swift` file:
-
-- Add PostgresClientKit to the `dependencies`.  For example:
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/codewinsdotcom/PostgresClientKit", from: "1.0.0"),
-],
-```
-
-- Reference the `PostgresClientKit` product in the `targets`.  For example:
-
-```swift
-targets: [
-    .target(
-        name: "MyProject",
-        dependencies: ["PostgresClientKit"]),
-]
-```
-
-Import to your source code file:
-
-```swift
-import PostgresClientKit
-```
-
-### Using CocoaPods
-
-Add `PostgresClientKit` to your `Podfile`.  For example:
-
-```
-target 'MyApp' do
-  pod 'PostgresClientKit', '~> 1.0'
-end
-```
-
-Then run `pod install`.
-
-Import to your source code file:
-
-```swift
-import PostgresClientKit
-```
-
-## Documentation
-
-- [API](https://codewinsdotcom.github.io/PostgresClientKit/Docs/API/index.html)
-- [Troubleshooting](https://github.com/codewinsdotcom/PostgresClientKit/blob/master/Docs/troubleshooting.md)
-- [FAQ](https://github.com/codewinsdotcom/PostgresClientKit/blob/master/Docs/faq.md)
-
 ## Additional examples
 
-- [PostgresClientKit-CommandLine-Example](https://github.com/pitfield/PostgresClientKit-CommandLine-Example): an example command-line application
 
-- [PostgresClientKit-iOS-Example](https://github.com/pitfield/PostgresClientKit-iOS-Example): an example iOS app
-
-## Contributing
-
-Thank you for your interest in contributing to PostgresClientKit.
-
-This project has a code of conduct.  See [CODE_OF_CONDUCT.md](https://github.com/codewinsdotcom/PostgresClientKit/blob/master/CODE_OF_CONDUCT.md) for details.
-
-Please use [issues](https://github.com/codewinsdotcom/PostgresClientKit/issues) to:
-
-- ask questions
-- report problems (bugs)
-- request enhancements
-
-Pull requests against the `develop` branch are welcomed.  For a non-trivial contribution (for example, more than correcting spelling, typos, or whitespace) please first discuss the proposed change by opening an issue.
-    
 ## License
 
-PostgresClientKit is licensed under the Apache 2.0 license.  See [LICENSE](https://github.com/codewinsdotcom/PostgresClientKit/blob/master/LICENSE) for details.
-
-## Versioning
-
-PostgresClientKit uses [Semantic Versioning 2.0.0](https://semver.org).  For the versions available, see the [tags on this repository](https://github.com/codewinsdotcom/PostgresClientKit/releases).
-
-## Built with
-
-- [Jazzy](https://github.com/realm/jazzy) - generation of API documentation pages
+SwiftPostgresClient is licensed under the Apache 2.0 license.
 
 ## Authors
 
-- David Pitfield [(@pitfield)](https://github.com/pitfield)
+- Will Temperley [(@willtemperley)](https://github.com/willtemperley) current maintainer.
+- David Pitfield [(@pitfield)](https://github.com/pitfield) author of the original project PostgresClientKit.

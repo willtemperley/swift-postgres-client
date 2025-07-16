@@ -78,5 +78,3 @@ struct PostgresByteATest {
         #expect(PostgresByteA("\\x123xyz") == nil)
     }
 }
-
-// EOF

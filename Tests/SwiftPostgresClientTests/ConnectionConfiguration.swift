@@ -17,6 +17,9 @@
 //  limitations under the License.
 //
 
+import SwiftPostgresClient
+
+
 /// The configuration for a `Connection` to the Postgres server.
 public struct ConnectionConfiguration {
     

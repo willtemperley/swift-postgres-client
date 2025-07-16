@@ -20,9 +20,10 @@
 @testable import SwiftPostgresClient
 import Testing
 
+
 public struct BasicConnectionTests {
     
-    let configurations = ConnectionConfigurations()
+    let configurations = TestConfigurations()
     
     func readmeExample() async throws {
         
@@ -53,7 +54,6 @@ public struct BasicConnectionTests {
 
         let rowCount = await cursor.rowCount
         print("Total rows: \(String(describing: rowCount))")
-
     }
     
     @Test

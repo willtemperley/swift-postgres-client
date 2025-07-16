@@ -24,12 +24,12 @@ import Foundation
 /// Tests roundtripping PostgresValue -> Postgres server data types -> PostgresValue.
 struct DataTypeTest {
     
-    let config = ConnectionConfigurations()
+    let configurations = TestConfigurations()
     
     @Test
     func test() async {
         
-        let connectionConfig = config.terryConnectionConfiguration
+        let connectionConfig = configurations.terryConnectionConfiguration
 
         do {
             let connection = try await Connection.connect(host: connectionConfig.host, port: connectionConfig.port)
