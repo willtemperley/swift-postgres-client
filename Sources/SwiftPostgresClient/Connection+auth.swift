@@ -21,9 +21,14 @@ import Foundation
 
 extension Connection {
     
+    /// Asynchronously authenticate to the server.
+    /// - Parameters:
+    ///   - user: The database user.
+    ///   - database: The database to connect to.
+    ///   - credential: The credential the user authenticates with.
     public func authenticate(user: String, database: String, credential: Credential) async throws {
         
-        try await sendRequest(StartupRequest(user: user, database: database, applicationName: "PostgresClientKit"))
+        try await sendRequest(StartupRequest(user: user, database: database, applicationName: "SwiftPostgresClient"))
 
         var state: AuthenticationState = .start
         var authenticationRequestSent = false
@@ -31,14 +36,11 @@ extension Connection {
         authLoop:
         while true {
             let authResponse = try await receiveResponse(type: AuthenticationResponse.self)
-            print("authResponse: \(authResponse)")
-
             state = try await handleAuthenticationStep(state: state,
                                                        response: authResponse,
                                                        user: user,
                                                        credential: credential,
                                                        authenticationRequestSent: &authenticationRequestSent)
-            print(state)
             if case .done = state {
                 break authLoop
             }
@@ -72,7 +74,7 @@ extension Connection {
             }
             try await sendRequest(PasswordMessageRequest(password: password))
             authenticationRequestSent = true
-            return .done
+            return .awaitingOK
 
         case .md5Password(let salt):
             guard case let .md5Password(password) = credential else {
@@ -81,7 +83,7 @@ extension Connection {
             let md5Password = computeMd5Password(user: user, password: password, salt: salt)
             try await sendRequest(PasswordMessageRequest(password: md5Password))
             authenticationRequestSent = true
-            return .done
+            return .awaitingOK
 
         case .sasl(let mechanisms):
             guard case let .scramSHA256(password, policy) = credential else {
@@ -91,7 +93,6 @@ extension Connection {
             let authenticator = SCRAMSHA256Authenticator(user: user, password: password, selectedChannelBinding: channelBinding)
             let clientFirst = try authenticator.prepareClientFirstMessage()
             let saslInitialRequest = SASLInitialRequest(mechanism: mechanism, clientFirstMessage: clientFirst)
-            print(saslInitialRequest.data().hexEncodedString())
             try await sendRequest(saslInitialRequest)
             authenticationRequestSent = true
             return .awaitingSaslContinue(authenticator)

@@ -17,15 +17,20 @@
 //  limitations under the License.
 //
 
+/// A connection to a PostgresSQL server for a specific user and database.
+///  Execution is actor-isolated
 extension Connection {
     
     func setCommandStatus(to status: CommandStatus) async throws {
         self.commandStatus = status
     }
     
-    func prepareStatement(query: String) async throws -> PreparedStatement {
+    /// Submits a  statement for parsing to the PostgreSQL server.
+    /// - Parameter text: The statement text.
+    /// - Returns: a `PreparedStatement` ready for parameter binding.
+    public func prepareStatement(text: String) async throws -> PreparedStatement {
         
-        let statement = Statement(text: query)
+        let statement = Statement(text: text)
         let parseRequest = ParseRequest(statement: statement)
         try await sendRequest(parseRequest)
         
@@ -34,7 +39,7 @@ extension Connection {
         
         try await receiveResponse(type: ParseCompleteResponse.self)
         
-        return PreparedStatement(name: statement.id, statement: statement, connection: self)
+        return PreparedStatement(name: statement.name, statement: statement, connection: self)
     }
     
     // used for decoding structs using column names

@@ -32,7 +32,7 @@ struct ParseRequest: Request {
     }
     
     var body: Data {
-        var body = statement.id.dataZero        // name of the prepared statement
+        var body = statement.name.dataZero        // name of the prepared statement
         body.append(statement.text.dataZero)
         body.append(UInt16(0).data)             // number of parameter data types
         return body

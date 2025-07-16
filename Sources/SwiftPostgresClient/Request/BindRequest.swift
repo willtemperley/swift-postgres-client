@@ -39,7 +39,7 @@ struct BindRequest: Request {
     var body: Data {
         
         var body = name.dataZero                          // destination portal
-        body.append(statement.id.dataZero)              // statement name
+        body.append(statement.name.dataZero)              // statement name
         body.append(UInt16(0).data)                     // use default parameter format ("text")
         body.append(UInt16(parameterValues.count).data) // number of parameter values
         

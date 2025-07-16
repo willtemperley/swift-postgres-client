@@ -19,37 +19,18 @@
 
 import Foundation
 
-/// A prepared SQL statement.
-///
-/// Use `Connection.prepareStatement(text:)` to create a `Statement`.
-///
-/// Call `Statement.execute(parameterValues:retrieveColumnMetadata:)` to execute the `Statement`,
-/// specifying the values of any parameters.
-///
-/// A `Statement` can be repeatedly executed, and the values of its parameters can be different
-/// each time.
-///
-/// When a `Statement` is no longer required, call `Statement.close()` to release its Postgres
-/// server resources.  A `Statement` is automatically closed by its deinitializer.
-///
-/// A `Statement` in PostgresClientKit corresponds to a prepared statement on the Postgres server
-/// whose name is the `id` of the `Statement`.
-public struct Statement: Sendable {
+/// A named statement
+struct Statement: Sendable {
     
-    /// Creates a `Statement`.
-    ///
-    /// - Parameters:
-    ///   - connection: the `Connection`
-    ///   - text: the SQL text
     init(text: String) {
         self.text = text
     }
     
     /// Uniquely identifies this `Statement`.
     ///
-    /// The `id` of a `Statement` in PostgresClientKit is also the name of the prepared statement on
-    /// the Postgres server.  The `id` is also used in logging and to formulate the `description`.
-    public let id = "Statement-\(UUID()))"
+    /// The  name of a `Statement`  corresponds to the name of the prepared statement on the
+    /// Postgres server.
+    public let name = "ST-\(UUID()))"
     
     /// The SQL text.
     public let text: String

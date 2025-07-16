@@ -1,57 +1,43 @@
-// Portal.swift
-// SwiftPostgresClient
 //
-// Created by Will Temperley on 15/07/2025. All rights reserved.
-// Copyright 2025 Will Temperley.
-// 
-// Copying or reproduction of this file via any medium requires prior express
-// written permission from the copyright holder.
-// -----------------------------------------------------------------------------
-///
-/// Implementation notes, links and internal documentation go here.
-///
-// -----------------------------------------------------------------------------
+//  Portal.swift
+//  SwiftPostgresClient
+//
+//  Copyright 2025 Will Temperley and the SwiftPostgresClient contributors.
+//
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//
 
 import Foundation
 
-struct PreparedStatement: Sendable {
-    let name: String
-    let statement: Statement
-    unowned let connection: Connection
-    
-    func bind(parameterValues: [PostgresValueConvertible], columnMetadata: Bool = false) async throws -> Portal {
-        
-        let portalName = UUID().uuidString
-        let bindRequest = BindRequest(name: portalName, statement: statement, parameterValues: parameterValues)
-        try await connection.sendRequest(bindRequest)
-        
-        let flushRequest = FlushRequest()
-        try await connection.sendRequest(flushRequest)
-        
-        try await connection.receiveResponse(type: BindCompleteResponse.self)
-        
-        var rowDecoder: RowDecoder?
-        if columnMetadata {
-            let metadata = try await connection.retrieveColumnMetadata()
-            if let metadata {
-                rowDecoder = RowDecoder(columns: metadata)
-            }
-        }
-        
-        return Portal(name: portalName, rowDecoder: rowDecoder, statement: statement, connection: connection)
-    }
-}
-
-struct Portal {
+/// A portal in PostgreSQL is a server-side object that represents a prepared statement along with its
+/// parameter values and execution state. It's part of PostgreSQL's extended query protocol and serves
+/// as an intermediate step between preparing a statement and executing it.
+/// 
+/// https://www.postgresql.org/docs/current/protocol-overview.html
+///
+public struct Portal {
     
     let name: String
     let rowDecoder: RowDecoder?
     let statement: Statement
     unowned let connection: Connection
     
-    // TODO: Max rows
+    /// Executes the associated prepared statement with already bound parameters.
+    ///
+    /// - Returns: an `AsyncSequence` of rows. This is a single use iterator.
     func execute() async throws -> ResultCursor {
         
+        // TODO: Max rows
         let executeRequest = ExecuteRequest(portalName: name, statement: statement)
         try await connection.sendRequest(executeRequest)
         

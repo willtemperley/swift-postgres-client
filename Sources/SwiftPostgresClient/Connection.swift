@@ -21,6 +21,7 @@ import Foundation
 import Network
 import CryptoKit
 
+/// A Connection actor provides asynchronous access to a PostgreSQL server.
 actor Connection {
     
     private var messageQueue: [Response] = []
@@ -32,6 +33,7 @@ actor Connection {
     var transactionStatus: TransactionStatus = .idle
     
     var commandStatus: CommandStatus?
+    private var portalStatus: [String: CommandStatus] = .init()
     
     private init(socket: NetworkConnection, certificateHash: Data) {
         self.socket = socket
@@ -39,6 +41,11 @@ actor Connection {
         Task { await receiveLoop() }
     }
     
+    /// Connect to a server.
+    /// - Parameters:
+    ///   - host: The host
+    ///   - port: The port
+    /// - Returns: A connection ready for authentication.
     public static func connect(
         host: String,
         port: Int = 5432
@@ -54,7 +61,9 @@ actor Connection {
         )
     }
     
-    func cancel() {
+    func cancel() async {
+        let terminateRequest = TerminateRequest()
+        try? await sendRequest(terminateRequest) // consumes any Error
         socket.cancel()
     }
     
@@ -162,11 +171,11 @@ actor Connection {
                 description: "unrecognized response type '\(responseType)'")
         }
         
-        print("decoded: \(response)")
         handleIncoming(response)
     }
     
     func sendRequest(_ request: Request) async throws {
+        // TODO: consider serializing multiple requests to the server - it's common that a command will be followed by a flush
         try await socket.write(from: request.data())
     }
     
@@ -175,6 +184,7 @@ actor Connection {
         try await sendRequest(ClosePortalRequest(name: name))
         try await sendRequest(FlushRequest())
         try await receiveResponse(type: CloseCompleteResponse.self)
+        portalStatus.removeValue(forKey: name)
         
         // Finalize the transaction (unless already in BEGIN/COMMIT)
         try await sendRequest(SyncRequest())
@@ -188,6 +198,11 @@ actor Connection {
     }
 }
 
+/// Create a connection to a PostgreSQL server.
+/// - Parameters:
+///   - host: The host
+///   - port: The port
+/// - Returns:connection in ready state and the server certificate hash.
 fileprivate func createPostgresConnection(host: String, port: UInt16) async throws -> (NWConnection, Data) {
     let tlsOptions = NWProtocolTLS.Options()
     let secProtocolOptions = tlsOptions.securityProtocolOptions

@@ -33,12 +33,11 @@ public struct BasicConnectionTests {
         try await connection.authenticate(user: "bob", database: "postgres", credential: credential)
 
         let text = "SELECT city, temp_lo, temp_hi, prcp, date FROM weather WHERE city = $1;"
-        let statement = try await connection.prepareStatement(query: text)
+        let statement = try await connection.prepareStatement(text: text)
         let portal = try await statement.bind(parameterValues: ["San Francisco"])
 
         let cursor = try await portal.execute()
 
-        var count = 0
         for try await row in cursor {
           let columns = row.columns
           let city = try columns[0].string()
@@ -53,6 +52,7 @@ public struct BasicConnectionTests {
         }
 
         let rowCount = await cursor.rowCount
+        print("Total rows: \(String(describing: rowCount))")
 
     }
     
@@ -65,7 +65,7 @@ public struct BasicConnectionTests {
         try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
         
         let text = "SELECT city, temp_lo, temp_hi, prcp, date FROM weather WHERE city = $1;"
-        let statement = try await connection.prepareStatement(query: text)
+        let statement = try await connection.prepareStatement(text: text)
         let portal = try await statement.bind(parameterValues: ["San Francisco"])
         
         let cursor = try await portal.execute()
@@ -119,7 +119,7 @@ public struct BasicConnectionTests {
         
         await #expect(throws: PostgresError.self) {
             try await connection.withTransaction {
-                let statement = try await connection.prepareStatement(query: "INSERT INTO notes (text) VALUES ($1)")
+                let statement = try await connection.prepareStatement(text: "INSERT INTO notes (text) VALUES ($1)")
                 let portal = try await statement.bind(parameterValues: ["Hello, world"])
                 // FIXME: need a separate command that drains the cursor
                 for try await _ in try await portal.execute() { }
@@ -140,7 +140,7 @@ public struct BasicConnectionTests {
         
         try await connection.executeSimpleQuery("CREATE TABLE notes (id SERIAL PRIMARY KEY, text VARCHAR NOT NULL);")
         try await connection.withTransaction {
-            let statement = try await connection.prepareStatement(query: "INSERT INTO notes (text) VALUES ($1)")
+            let statement = try await connection.prepareStatement(text: "INSERT INTO notes (text) VALUES ($1)")
             
             let portal = try await statement.bind(parameterValues: ["Hello, world"])
             

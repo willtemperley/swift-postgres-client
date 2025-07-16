@@ -17,12 +17,15 @@
 //  limitations under the License.
 //
 
+/// An `AsyncSequence` of rows.
 public struct ResultCursor: AsyncSequence, Sendable {
     
     let connection: Connection
     let portalName: String
     let rowDecoder: RowDecoder?
     
+    /// Either the number of rows returned or the number of rows affected by the associated statement.
+    /// This will not be available until after the result set has been consumed.
     var rowCount: Int? {
         get async {
             await connection.commandStatus?.rowCount
@@ -35,10 +38,16 @@ public struct ResultCursor: AsyncSequence, Sendable {
         self.rowDecoder = rowDecoder
     }
     
+    /// Creates the asynchronous iterator that produces elements of this
+    /// asynchronous sequence.
+    ///
+    /// - Returns: An instance of the `AsyncIterator` type used to produce
+    /// messages in the asynchronous sequence.
     public func makeAsyncIterator() -> AsyncIterator {
         return AsyncIterator(connection: connection, portalName: portalName, rowDecoder: rowDecoder)
     }
     
+    /// An asynchronous iterator that produces the rows of this asynchronous sequence.
     public struct AsyncIterator: AsyncIteratorProtocol {
         public typealias Element = Row
         
