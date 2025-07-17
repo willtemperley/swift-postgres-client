@@ -18,6 +18,7 @@ import Testing
 struct Test {
     
     // TODO: check connection.execute() throws an error if a select is run
+    // TODO: test to ensure error is thrown when 
 
     @Test func todo() async throws {
         

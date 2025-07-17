@@ -47,6 +47,7 @@ extension Connection {
         }
 
         try await receiveResponse(type: ReadyForQueryResponse.self)
+        self.state = .ready
 
         if !authenticationRequestSent {
             // Postgres allowed trust authentication, yet a cleartextPassword,

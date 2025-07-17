@@ -20,6 +20,8 @@
 /// Errors thrown by PostgresClientKit.
 public enum PostgresError: Error {
     
+    case awaitingAuthentication
+    
     case invalidState(String)
     
     /// The expected protocol could not be followed

@@ -124,6 +124,7 @@ func withIsolatedSchema(
         throw error
     }
 
+    try await conn.recoverIfNeeded()
     try await conn.executeSimpleQuery("DROP SCHEMA IF EXISTS \(schema) CASCADE")
     await conn.cancel()
 }
@@ -147,7 +148,10 @@ func withWeatherTable(
         try await statement.bind(parameterValues: [ "San Francisco", 46, 50, 0.25, "1994-11-27" ]).execute()
         try await statement.bind(parameterValues: [ "San Francisco", 43, 57, 0.0, "1994-11-29" ]).execute()
         try await statement.bind(parameterValues: [ "Hayward", 37, 54, nil, "1994-11-29" ]).execute()
+        print("Closing statement...")
         try await statement.close()
+        
+        print("Performing work...")
         try await perform(conn)
     }
 }

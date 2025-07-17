@@ -26,14 +26,6 @@ struct RowDecoderTest {
     
     let config = TestConfigurations().terryConnectionConfiguration
     
-    func setUp() async {
-        do {
-            try await createWeatherTable(configuration: config)
-        } catch {
-            Issue.record(error)
-        }
-    }
-    
     struct WeatherStruct: Decodable, Equatable {
         let date: PostgresDate
         let city: String
@@ -66,45 +58,6 @@ struct RowDecoderTest {
             lhs.prcp == rhs.prcp
         }
     }
-    
-    @Test
-    func testWeatherDecoding() async throws {
-        try await withWeatherTable(config: config) { conn in
-            
-            let weatherExpectedResults = [
-                WeatherStruct(date: PostgresDate("1994-11-27")!, city: "San Francisco", temp_lo: 46, temp_hi: 50, prcp: 0.25),
-                WeatherStruct(date: PostgresDate("1994-11-29")!, city: "Hayward", temp_lo: 37, temp_hi: 54, prcp: nil),
-                WeatherStruct(date: PostgresDate("1994-11-29")!, city: "San Francisco", temp_lo: 43, temp_hi: 57, prcp: 0)
-            ]
-            
-            struct StringAndOptionalString: Decodable, Equatable {
-                let string: String
-                let optionalString: String?
-            }
-            
-//            /// decodeByColumnName: basic scenario
-//            await #expect(throws: Never.self) {
-//                let result = try await decodeByColumnIndex(
-//                    sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather ORDER BY date, city;",
-//                    type: WeatherStruct.self,
-//                    using: conn
-//                )
-//                #expect(result == weatherExpectedResults)
-//            }
-            
-            /// decodeByColumnName: fails if retrieveColumnMetadata is false
-            await #expect(throws: PostgresError.self) {
-                try await decodeByColumnName(
-                    sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather ORDER BY date, city;",
-                    type: WeatherStruct.self,
-                    using: conn,
-                    retrieveColumnMetadata: false
-                )
-            }
-
-        }
-    }
-    
     
     @Test
     func testBasicOperation() async throws {
@@ -308,30 +261,35 @@ struct RowDecoderTest {
     }
     
     @Test
-    func testDecodableClass() async {
+    func testDecodableClass() async throws {
         
-        await setUp()
-        
-        let weatherExpectedResults = [
-            WeatherClass(date: PostgresDate("1994-11-27")!, city: "San Francisco", temp_lo: 46, temp_hi: 50, prcp: 0.25),
-            WeatherClass(date: PostgresDate("1994-11-29")!, city: "Hayward", temp_lo: 37, temp_hi: 54, prcp: nil),
-            WeatherClass(date: PostgresDate("1994-11-29")!, city: "San Francisco", temp_lo: 43, temp_hi: 57, prcp: 0)
-        ]
-        
-        /// decodeByColumnName: basic scenario
-        await #expect(throws: Never.self) {
-            let result = try await decodeByColumnIndex(
-                sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather ORDER BY date, city;",
-                type: WeatherClass.self)
-            #expect(result == weatherExpectedResults)
-        }
-        
-        /// decodeByColumnIndex: basic scenario
-        await #expect(throws: Never.self) {
-            let result = try await decodeByColumnIndex(
-                sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather ORDER BY date, city;",
-                type: WeatherClass.self)
-            #expect(result == weatherExpectedResults)
+        try await withWeatherTable(config: config) { conn in
+            
+            let weatherExpectedResults = [
+                WeatherClass(date: PostgresDate("1994-11-27")!, city: "San Francisco", temp_lo: 46, temp_hi: 50, prcp: 0.25),
+                WeatherClass(date: PostgresDate("1994-11-29")!, city: "Hayward", temp_lo: 37, temp_hi: 54, prcp: nil),
+                WeatherClass(date: PostgresDate("1994-11-29")!, city: "San Francisco", temp_lo: 43, temp_hi: 57, prcp: 0)
+            ]
+            
+            /// decodeByColumnName: basic scenario
+            await #expect(throws: Never.self) {
+                let result = try await decodeByColumnIndex(
+                    sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather ORDER BY date, city;",
+                    type: WeatherClass.self,
+                    using: conn
+                )
+                #expect(result == weatherExpectedResults)
+            }
+            
+            /// decodeByColumnIndex: basic scenario
+            await #expect(throws: Never.self) {
+                let result = try await decodeByColumnIndex(
+                    sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather ORDER BY date, city;",
+                    type: WeatherClass.self,
+                    using: conn
+                )
+                #expect(result == weatherExpectedResults)
+            }
         }
     }
     
@@ -340,7 +298,10 @@ struct RowDecoderTest {
     //
     
     @Test
-    func testStandardLibraryTypes() async {
+    func testStandardLibraryTypes() async throws {
+        
+        let connection = try await Connection.connect(host: config.host)
+        try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
         
         struct StandardLibraryTypes: Decodable, Equatable {
             let bool: Bool
@@ -368,7 +329,9 @@ struct RowDecoderTest {
                     -9223372036854775808, -128, -32768, -2147483648, -9223372036854775808,
                     18446744073709551615, 255, 65535, 4294967295, 18446744073709551615;
                     """,
-                type: StandardLibraryTypes.self)
+                type: StandardLibraryTypes.self,
+                using: connection
+            )
             #expect(result ==
                     [StandardLibraryTypes(
                         bool: true, string: "hello", double: 3.14, float: -3.14,
@@ -384,26 +347,35 @@ struct RowDecoderTest {
         await #expect(throws: Never.self) {
             let result = try await decodeByColumnIndex(
                 sql: "SELECT '123', '3.14';",
-                type: Int8AndDouble.self)
+                type: Int8AndDouble.self,
+                using: connection
+            )
             #expect(result == [Int8AndDouble(int8: 123, double: 3.14)])
         }
         
         await #expect(throws: DecodingError.self) {
             try await decodeByColumnIndex(
                 sql: "SELECT 123.4, NULL;",
-                type: Int8AndDouble.self)
+                type: Int8AndDouble.self,
+                using: connection
+            )
         }
         
         await #expect(throws: DecodingError.self) {
             
             try await decodeByColumnIndex(
                 sql: "SELECT NULL, '3point14';",
-                type: Int8AndDouble.self)
+                type: Int8AndDouble.self,
+                using: connection
+            )
         }
     }
     
     @Test
-    func testPostgresClientKitTypes() async {
+    func testPostgresClientKitTypes() async throws {
+        
+        let connection = try await Connection.connect(host: config.host)
+        try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
         
         struct PostgresClientKitTypes: Decodable, Equatable {
             let postgresByteA: PostgresByteA
@@ -426,7 +398,9 @@ struct RowDecoderTest {
                                 CAST('16:25:19.365' as TIME),
                                 CAST('16:25:19.365+00:00' as TIME WITH TIME ZONE);
                                 """,
-                type: PostgresClientKitTypes.self)
+                type: PostgresClientKitTypes.self,
+                using: connection
+            )
             #expect(result ==
                     [PostgresClientKitTypes(
                         postgresByteA: PostgresByteA("\\xDEADBEEF")!,
@@ -444,7 +418,10 @@ struct RowDecoderTest {
     //
     
     @Test
-    func testFoundationDate() async {
+    func testFoundationDate() async throws {
+        
+        let connection = try await Connection.connect(host: config.host)
+        try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
         
         struct FoundationDate: Decodable, Equatable {
             let dateFromTimestampWithTimeZone: Date
@@ -467,7 +444,9 @@ struct RowDecoderTest {
                             '16:25:19.365',
                             '16:25:19.365+00:00';
                             """,
-                type: FoundationDate.self)
+                type: FoundationDate.self,
+                using: connection
+            )
             #expect(result ==
                     [FoundationDate(
                         dateFromTimestampWithTimeZone: PostgresTimestampWithTimeZone("2019-03-14 16:25:19.365+00:00")!.date,
@@ -492,7 +471,9 @@ struct RowDecoderTest {
                                     '16:25:19.365-08:00';
                                     """,
                 type: FoundationDate.self,
-                defaultTimeZone: pstTimeZone)
+                using: connection,
+                defaultTimeZone: pstTimeZone
+            )
             #expect(result ==
                     [FoundationDate(
                         dateFromTimestampWithTimeZone: PostgresTimestampWithTimeZone("2019-03-14 16:25:19.365-08:00")!.date,
@@ -510,68 +491,72 @@ struct RowDecoderTest {
     //
     
     @Test
-    func testPerformance() async {
-        await setUp()
-        do {
-            // INSERT 1000 days of random weather records for San Jose.
-            let connection = try await Connection.connect(host: config.host)
-            try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
-            try await connection.beginTransaction()
-            let text = "INSERT INTO weather (date, city, temp_lo, temp_hi, prcp) VALUES ($1, $2, $3, $4, $5)"
-            let statement = try await connection.prepareStatement(text: text)
-            var weatherHistory = [WeatherStruct]()
-            
-            for i in 0..<1_000 {
+    func testPerformance() async throws {
+        try await withWeatherTable(config: config) { conn in
+            do {
+                try await conn.executeSimpleQuery("DELETE FROM weather")
                 
-                let tempLo = Int.random(in: 20...70)
-                let tempHi = Int.random(in: tempLo...100)
+                // INSERT 1000 days of random weather records for San Jose.
+                let text = "INSERT INTO weather (date, city, temp_lo, temp_hi, prcp) VALUES ($1, $2, $3, $4, $5)"
+                let statement = try await conn.prepareStatement(text: text)
+                var weatherHistory: [WeatherStruct] = .init()
                 
-                let prcp: Double? = {
-                    let r = Double.random(in: 0..<1)
-                    if r < 0.1 { return nil }
-                    if r < 0.8 { return 0.0 }
-                    return Double(Int.random(in: 1...20)) / 10.0
-                }()
+                for i in 0..<1_000 {
+                    
+                    let tempLo = Int.random(in: 20...70)
+                    let tempHi = Int.random(in: tempLo...100)
+                    
+                    let prcp: Double? = {
+                        let r = Double.random(in: 0..<1)
+                        if r < 0.1 { return nil }
+                        if r < 0.8 { return 0.0 }
+                        return Double(Int.random(in: 1...20)) / 10.0
+                    }()
+                    
+                    let date: PostgresDate = {
+                        let pgd = PostgresDate(year: 2000, month: 1, day: 1)!
+                        var d = pgd.date(in: utcTimeZone)
+                        d = enUsPosixUtcCalendar.date(byAdding: .day, value: i, to: d)!
+                        return d.postgresDate(in: utcTimeZone)
+                    }()
+                    
+                    let weather = WeatherStruct(
+                        date: date, city: "San Jose", temp_lo: tempLo, temp_hi: tempHi, prcp: prcp)
+                    
+                    weatherHistory.append(weather)
+                    
+                    let result = try await statement.bind(parameterValues:
+                                                            [ weather.date, weather.city, weather.temp_lo, weather.temp_hi, weather.prcp ])
+                        .execute()
+                    
+                    #expect(result.rowCount ==  1)
+                }
                 
-                let date: PostgresDate = {
-                    let pgd = PostgresDate(year: 2000, month: 1, day: 1)!
-                    var d = pgd.date(in: utcTimeZone)
-                    d = enUsPosixUtcCalendar.date(byAdding: .day, value: i, to: d)!
-                    return d.postgresDate(in: utcTimeZone)
-                }()
+                try await conn.commitTransaction()
                 
-                let weather = WeatherStruct(
-                    date: date, city: "San Jose", temp_lo: tempLo, temp_hi: tempHi, prcp: prcp)
+                // SELECT the weather records and decode by name
+                var selectedWeatherHistory = [WeatherStruct]()
+                try await time("SELECT \(weatherHistory.count) rows and decode by name") {
+                    selectedWeatherHistory = try await decodeByColumnName(
+                        sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather WHERE city = 'San Jose' ORDER BY date;",
+                        type: WeatherStruct.self,
+                        using: conn
+                    )
+                }
+                #expect(selectedWeatherHistory == weatherHistory)
                 
-                weatherHistory.append(weather)
-                
-                let result = try await statement.bind(parameterValues:
-                                                        [ weather.date, weather.city, weather.temp_lo, weather.temp_hi, weather.prcp ])
-                    .execute()
-                
-                #expect(result.rowCount ==  1)
+                // SELECT the weather records and decode by index
+                try await time("SELECT \(weatherHistory.count) rows and decode by index") {
+                    selectedWeatherHistory = try await decodeByColumnIndex(
+                        sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather WHERE city = 'San Jose' ORDER BY date;",
+                        type: WeatherStruct.self,
+                        using: conn
+                    )
+                }
+                #expect(selectedWeatherHistory == weatherHistory)
+            } catch {
+                Issue.record("Unexpected error: \(error)")
             }
-            
-            try await connection.commitTransaction()
-            
-            // SELECT the weather records and decode by name
-            var selectedWeatherHistory = [WeatherStruct]()
-            try await time("SELECT \(weatherHistory.count) rows and decode by name") {
-//                selectedWeatherHistory = try await decodeByColumnName(
-//                    sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather WHERE city = 'San Jose' ORDER BY date;",
-//                    type: WeatherStruct.self)
-            }
-            #expect(selectedWeatherHistory == weatherHistory)
-            
-            // SELECT the weather records and decode by index
-            try await time("SELECT \(weatherHistory.count) rows and decode by index") {
-//                selectedWeatherHistory = try await decodeByColumnIndex(
-//                    sql: "SELECT date, city, temp_lo, temp_hi, prcp FROM weather WHERE city = 'San Jose' ORDER BY date;",
-//                    type: WeatherStruct.self)
-            }
-            #expect(selectedWeatherHistory == weatherHistory)
-        } catch {
-            Issue.record("Unexpected error: \(error)")
         }
     }
     
@@ -587,7 +572,7 @@ struct RowDecoderTest {
         retrieveColumnMetadata: Bool = true,
         defaultTimeZone: TimeZone? = nil
     ) async throws -> [T] where T: Decodable {
-        print("UUID: \(UUID())")
+        try await connection.recoverIfNeeded()
         let statement = try await connection.prepareStatement(text: sql)
         let cursor = try await statement.bind(columnMetadata: retrieveColumnMetadata).query()
         var results = [T]()
@@ -599,13 +584,13 @@ struct RowDecoderTest {
         return results
     }
     
-    
     func decodeByColumnIndex<T>(
         sql: String,
         type: T.Type,
         using connection: Connection,
         defaultTimeZone: TimeZone? = nil
     ) async throws -> [T] where T: Decodable {
+        try await connection.recoverIfNeeded()
         let statement = try await connection.prepareStatement(text: sql)
         let cursor = try await statement.bind(columnMetadata: false).query()
         var results = [T]()
@@ -615,28 +600,10 @@ struct RowDecoderTest {
         return results
     }
     
-    func decodeByColumnIndex<T>(sql: String,
-                                type: T.Type,
-                                defaultTimeZone: TimeZone? = nil) async throws -> [T] where T: Decodable {
-        
-        let connection = try await Connection.connect(host: config.host)
-        try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
-        let statement = try await connection.prepareStatement(text: sql)
-        let cursor = try await statement.bind(columnMetadata: false).query()
-        var results = [T]()
-        
-        for try await row in cursor {
-            results  += [ try row.decodeByColumnIndex(T.self, defaultTimeZone: defaultTimeZone) ]
-        }
-        
-        return results
-    }
-    
-    func time(_ name: String, operation: () async throws -> Void) async rethrows {
-        let clock = ContinuousClock()
-        let start = clock.now
+    func time(_ name: String, operation: () async throws -> Void) async throws {
+        let start = Date()
         try await operation()
-        let duration = clock.now - start
-        print("\(name): elapsed time \(duration.formatted())")
+        let elapsed = Date().timeIntervalSince(start) * 1000
+        print("\(name): elapsed time \(String(format: "%.2f", elapsed)) ms")
     }
 }

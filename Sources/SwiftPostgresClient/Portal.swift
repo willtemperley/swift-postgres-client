@@ -37,14 +37,7 @@ public struct Portal {
     /// - Returns: an `AsyncSequence` of rows. This is a single use iterator.
     func query() async throws -> ResultCursor {
         
-        // TODO: Max rows
-        let executeRequest = ExecuteRequest(portalName: name, statement: statement)
-        try await connection.sendRequest(executeRequest)
-        
-        let flushRequest = FlushRequest()
-        try await connection.sendRequest(flushRequest)
-        
-        return ResultCursor(connection: connection, portalName: name, rowDecoder: rowDecoder)
+        return try await connection.query(portalName: name, statement: statement, rowDecoder: rowDecoder)
     }
     
     @discardableResult

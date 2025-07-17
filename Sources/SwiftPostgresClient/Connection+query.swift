@@ -42,6 +42,23 @@ extension Connection {
         return PreparedStatement(name: statement.name, statement: statement, connection: self)
     }
     
+    func query(
+        portalName: String,
+        statement: Statement,
+        rowDecoder: RowDecoder?
+    ) async throws -> ResultCursor {
+        
+        state = .querySent
+        
+        let executeRequest = ExecuteRequest(portalName: portalName, statement: statement)
+        try await sendRequest(executeRequest)
+        
+        let flushRequest = FlushRequest()
+        try await sendRequest(flushRequest)
+        
+        return ResultCursor(connection: self, portalName: portalName, rowDecoder: rowDecoder)
+    }
+    
     public func closeStatement(name: String) async throws {
         
         let closeStatementRequest = CloseStatementRequest(name: name)

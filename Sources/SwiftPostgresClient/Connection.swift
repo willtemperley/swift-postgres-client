@@ -24,20 +24,38 @@ import CryptoKit
 /// A Connection actor provides asynchronous access to a PostgreSQL server.
 actor Connection {
     
+    enum ConnectionState {
+        case awaitingAuthentication
+        case ready
+        case querySent
+        case awaitingQueryResult
+        case needsDrain
+        case closed
+    }
+    
+    enum PortalState {
+        case open
+        case closing
+        case closed
+    }
+    
     private var messageQueue: [Response] = []
     private var waiters: [CheckedContinuation<Response, Never>] = []
     private var socket: NetworkConnection
     
     let certificateHash: Data
     
+    var portalStatus: [String: PortalState] = [:]
+    var state: ConnectionState = .closed
     var transactionStatus: TransactionStatus = .idle
     
     var commandStatus: CommandStatus?
-    private var portalStatus: [String: CommandStatus] = .init()
     
     private init(socket: NetworkConnection, certificateHash: Data) {
         self.socket = socket
         self.certificateHash = certificateHash
+        precondition(socket.connected)
+        self.state = .awaitingAuthentication
         Task { await receiveLoop() }
     }
     
@@ -93,13 +111,38 @@ actor Connection {
     
     func receiveResponse() async -> Response {
         if !messageQueue.isEmpty {
-            return messageQueue.removeFirst()
+            let message = messageQueue.removeFirst()
+            updateState(for: message)
+            return message
         }
         
         return await withCheckedContinuation { continuation in
             waiters.append(continuation)
         }
     }
+    
+    func updateState(for response: Response) {
+        print("updating state for \(response)")
+        switch response {
+        case is DataRowResponse, is RowDescriptionResponse:
+            state = .awaitingQueryResult
+            
+        case is ReadyForQueryResponse:
+            state = .ready
+            
+        case is ErrorResponse:
+            state = .needsDrain  // or maybe .errorRecovering?
+            
+        case is CommandCompleteResponse:
+            // possibly still in streaming mode; don’t change state yet
+            break
+            
+        default:
+            // no change
+            break
+        }
+    }
+    
     
     @discardableResult
     func receiveResponse<T: Response>(type: T.Type) async throws -> T {
@@ -109,13 +152,17 @@ actor Connection {
             // TODO: non-command messages should be published as another async stream
             switch message {
             case let notification as NotificationResponse:
-                print("notification: \(notification)")
+                continue
+                //                print("notification: \(notification)")
             case let status as ParameterStatusResponse:
-                print("parameter status: \(status)")
+                continue
+                //                print("parameter status: \(status)")
             case let keyData as BackendKeyDataResponse:
-                print("backend key data: \(keyData)")
+                continue
+                //                print("backend key data: \(keyData)")
             case let notice as NoticeResponse:
-                print("notice: \(notice)")
+                continue
+                //                print("notice: \(notice)")
             default:
                 // update transaction status
                 if let readyForQuery = message as? ReadyForQueryResponse {
@@ -179,22 +226,41 @@ actor Connection {
         try await socket.write(from: request.data())
     }
     
-    func cleanupPortal(name: String) async throws {
-        // Close the portal
-        try await sendRequest(ClosePortalRequest(name: name))
-        try await sendRequest(FlushRequest())
-        try await receiveResponse(type: CloseCompleteResponse.self)
-        portalStatus.removeValue(forKey: name)
-        
-        // Finalize the transaction (unless already in BEGIN/COMMIT)
-        try await sendRequest(SyncRequest())
-        
-        // transaction status always set on ReadyForQueryResponse
-        try await receiveResponse(type: ReadyForQueryResponse.self)
-        
-#if DEBUG
-        print("Transaction status: \(self.transactionStatus)")
-#endif
+    func recoverIfNeeded() async throws {
+        switch state {
+        case .ready:
+            return
+            
+        case .querySent, .awaitingQueryResult, .needsDrain:
+            // Cleanup all open portals
+            for name in self.portalStatus.keys {
+                try await sendRequest(ClosePortalRequest(name: name))
+                try await sendRequest(FlushRequest())
+                self.portalStatus.removeValue(forKey: name)
+            }
+            
+            try await sendRequest(SyncRequest())
+            try await sendRequest(FlushRequest())
+
+            // Drain all messages until ReadyForQuery
+            while true {
+                guard connected else {
+                    state = .closed
+                    throw PostgresError.connectionClosed
+                }
+                let message = await receiveResponse()
+                updateState(for: message)
+                if message is ReadyForQueryResponse { break }
+            }
+
+            precondition(state == .ready)
+
+        case .closed:
+            throw PostgresError.connectionClosed
+
+        case .awaitingAuthentication:
+            throw PostgresError.awaitingAuthentication
+        }
     }
 }
 

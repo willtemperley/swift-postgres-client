@@ -66,8 +66,12 @@ public struct ResultCursor: AsyncSequence, Sendable {
                 
                 switch response {
                 case let dataRow as DataRowResponse:
-                    let row = Row(columns: dataRow.columns, columnNameRowDecoder: rowDecoder)
-                    return row
+                    do {
+                        let row = Row(columns: dataRow.columns, columnNameRowDecoder: rowDecoder)
+                        return row
+                    } catch {
+                        throw error
+                    }
                     
                 case is EmptyQueryResponse:
                     try await connection.setCommandStatus(to: .empty)
@@ -78,6 +82,7 @@ public struct ResultCursor: AsyncSequence, Sendable {
                     
                     let commandStatus = command.status
                     
+                    // TODO: consider handling this upstream - it's known in the message queue
                     try await connection.setCommandStatus(to: commandStatus)
                     try await connection.cleanupPortal(name: portalName)
                     return nil
