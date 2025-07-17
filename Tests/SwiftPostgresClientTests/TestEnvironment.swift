@@ -18,8 +18,8 @@
 //  limitations under the License.
 //
 
+@testable import SwiftPostgresClient
 import Foundation
-import SwiftPostgresClient
 import Testing
 
 /// The configuration for unit testing.
@@ -63,6 +63,96 @@ struct TestEnvironment {
     /// The current test environment.
     static let current = TestEnvironment()
 }
+
+/// Creates (or re-creates) the `weather` table from the Postgres tutorial and populates it
+/// with three rows. A unique temporary schema is created and dropped for each invocation to ensure
+/// test isolation.
+///
+/// - SeeAlso: https://www.postgresql.org/docs/12/tutorial-table.html
+/// - SeeAlso: https://www.postgresql.org/docs/12/tutorial-populate.html
+func createWeatherTable(configuration: ConnectionConfiguration) async throws {
+    
+    let connection = try await Connection.connect(host: configuration.host, port: configuration.port)
+    try await connection.authenticate(user: configuration.user, database: configuration.database, credential: configuration.credential)
+    let schema = "test_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+    
+    defer {
+        Task {
+            try await connection.executeSimpleQuery("DROP SCHEMA IF EXISTS \(schema) CASCADE")
+            await connection.cancel()
+        }
+    }
+    
+    try await connection.executeSimpleQuery("CREATE SCHEMA \(schema)")
+    try await connection.executeSimpleQuery("SET search_path TO \(schema)")
+
+    try await connection.executeSimpleQuery("DROP TABLE IF EXISTS weather CASCADE")
+    
+    try await connection.executeSimpleQuery("""
+        CREATE TABLE weather (
+            city            varchar(80),
+            temp_lo         int,           -- low temperature
+            temp_hi         int,           -- high temperature
+            prcp            real,          -- precipitation
+            date            date)
+        """)
+    
+    let statement = try await connection.prepareStatement(text:
+        "INSERT INTO weather (city, temp_lo, temp_hi, prcp, date) VALUES ($1, $2, $3, $4, $5)")
+    try await statement.bind(parameterValues: [ "San Francisco", 46, 50, 0.25, "1994-11-27" ]).execute()
+    try await statement.bind(parameterValues: [ "San Francisco", 43, 57, 0.0, "1994-11-29" ]).execute()
+    try await statement.bind(parameterValues: [ "Hayward", 37, 54, nil, "1994-11-29" ]).execute()
+    try await statement.close()
+}
+
+func withIsolatedSchema(
+    config: ConnectionConfiguration,
+    perform: @Sendable (_ conn: Connection) async throws -> Void
+) async throws {
+    let conn = try await Connection.connect(host: config.host, port: config.port)
+    try await conn.authenticate(user: config.user, database: config.database, credential: config.credential)
+
+    let schema = "test_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+
+    do {
+        try await conn.executeSimpleQuery("CREATE SCHEMA \(schema)")
+        try await conn.executeSimpleQuery("SET search_path TO \(schema)")
+        try await perform(conn)
+    } catch {
+        try? await conn.executeSimpleQuery("DROP SCHEMA IF EXISTS \(schema) CASCADE")
+        await conn.cancel()
+        throw error
+    }
+
+    try await conn.executeSimpleQuery("DROP SCHEMA IF EXISTS \(schema) CASCADE")
+    await conn.cancel()
+}
+
+func withWeatherTable(
+    config: ConnectionConfiguration,
+    perform: @Sendable (_ conn: Connection) async throws -> Void
+) async throws {
+    try await withIsolatedSchema(config: config) { conn in
+        try await conn.executeSimpleQuery("""
+            CREATE TABLE weather (
+                city varchar(80),
+                temp_lo int,
+                temp_hi int,
+                prcp real,
+                date date
+            )
+        """)
+        let statement = try await conn.prepareStatement(text:
+            "INSERT INTO weather (city, temp_lo, temp_hi, prcp, date) VALUES ($1, $2, $3, $4, $5)")
+        try await statement.bind(parameterValues: [ "San Francisco", 46, 50, 0.25, "1994-11-27" ]).execute()
+        try await statement.bind(parameterValues: [ "San Francisco", 43, 57, 0.0, "1994-11-29" ]).execute()
+        try await statement.bind(parameterValues: [ "Hayward", 37, 54, nil, "1994-11-29" ]).execute()
+        try await statement.close()
+        try await perform(conn)
+    }
+}
+
+
 
 //
 // MARK: Localization

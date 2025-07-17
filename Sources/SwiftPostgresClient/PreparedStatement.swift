@@ -34,7 +34,7 @@ public struct PreparedStatement: Sendable {
     ///   - parameterValues: The required parameter values.
     ///   - columnMetadata: 
     /// - Returns: a `Portal` ready to execute the associated prepared statement.
-    public func bind(parameterValues: [PostgresValueConvertible], columnMetadata: Bool = false) async throws -> Portal {
+    public func bind(parameterValues: [PostgresValueConvertible?] = [], columnMetadata: Bool = false) async throws -> Portal {
         
         let portalName = UUID().uuidString
         let bindRequest = BindRequest(name: portalName, statement: statement, parameterValues: parameterValues)
@@ -47,12 +47,17 @@ public struct PreparedStatement: Sendable {
         
         var rowDecoder: RowDecoder?
         if columnMetadata {
-            let metadata = try await connection.retrieveColumnMetadata()
+            let metadata = try await connection.retrieveColumnMetadata(portalName: portalName)
             if let metadata {
                 rowDecoder = RowDecoder(columns: metadata)
             }
         }
         
         return Portal(name: portalName, rowDecoder: rowDecoder, statement: statement, connection: connection)
+    }
+    
+    
+    func close() async throws {
+        try await connection.closeStatement(name: name)
     }
 }

@@ -42,12 +42,23 @@ extension Connection {
         return PreparedStatement(name: statement.name, statement: statement, connection: self)
     }
     
+    public func closeStatement(name: String) async throws {
+        
+        let closeStatementRequest = CloseStatementRequest(name: name)
+        try await sendRequest(closeStatementRequest)
+        
+        let flushRequest = FlushRequest()
+        try await sendRequest(flushRequest)
+        
+        try await receiveResponse(type: CloseCompleteResponse.self)
+    }
+    
     // used for decoding structs using column names
-    func retrieveColumnMetadata() async throws -> [ColumnMetadata]? {
+    func retrieveColumnMetadata(portalName: String) async throws -> [ColumnMetadata]? {
         
         var columns: [ColumnMetadata]? = nil
         
-        let describePortalRequest = DescribePortalRequest()
+        let describePortalRequest = DescribePortalRequest(name: portalName)
         try await sendRequest(describePortalRequest)
         
         let flushRequest = FlushRequest()

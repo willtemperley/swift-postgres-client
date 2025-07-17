@@ -1,19 +1,3 @@
-// CloseStatementRequest 2.swift
-// PostgresClientKit
-//
-// Created by Will Temperley on 12/07/2025. All rights reserved.
-// Copyright 2025 Will Temperley.
-// 
-// Copying or reproduction of this file via any medium requires prior express
-// written permission from the copyright holder.
-// -----------------------------------------------------------------------------
-///
-/// Implementation notes, links and internal documentation go here.
-///
-// -----------------------------------------------------------------------------
-
-
-
 //
 //  CloseStatementRequest.swift
 //  PostgresClientKit
@@ -37,11 +21,11 @@ import Foundation
 
 struct CloseStatementRequest: Request {
     
-    init(statement: Statement) {
-        self.statement = statement
-    }
+    private let name: String
     
-    private let statement: Statement
+    init(name: String) {
+        self.name = name
+    }
     
     var requestType: Character? {
         return "C"
@@ -49,7 +33,7 @@ struct CloseStatementRequest: Request {
     
     var body: Data {
         var body = "S".data                 // for "statement"
-        body.append(statement.name.dataZero)  // name of the prepared statement
+        body.append(name.dataZero)  // name of the prepared statement
         return body
     }
 }

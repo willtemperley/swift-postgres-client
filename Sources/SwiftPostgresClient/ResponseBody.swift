@@ -46,11 +46,19 @@ struct ResponseBody: Sendable {
     }
 
     mutating func readUInt16() throws -> UInt16 {
-        guard offset + 2 <= data.count else { throw PostgresError.protocolError("Not enough data") }
-        let value = data[offset..<offset+2].withUnsafeBytes { $0.load(as: UInt16.self).bigEndian }
+        guard offset + 2 <= data.count else {
+            throw PostgresError.protocolError("Not enough data")
+        }
+        
+        var value: UInt16 = 0
+        _ = withUnsafeMutableBytes(of: &value) { dest in
+            data[offset..<offset+2].copyBytes(to: dest)
+        }
+        
         offset += 2
-        return value
+        return UInt16(bigEndian: value)
     }
+
 
     mutating func readUInt32() throws -> UInt32 {
         guard offset + 4 <= data.count else {
