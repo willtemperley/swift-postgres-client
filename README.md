@@ -30,11 +30,9 @@ This project has been adapted from PostgresClientKit, with the following changes
 
 - **Channel binding support.** A security feature for SCRAM-SHA-256 authentication over TLS, channel binding links the TLS session to the authentication exchange, protecting against man-in-the-middle (MitM) attacks.
 
-Sounds good?  Let's look at an example.
-
 ## Example
 
-This is a basic, but complete, example of how to connect to Postgres, perform a SQL `SELECT` command, and process the resulting rows.  It uses the `weather` table in the [Postgres tutorial](https://www.postgresql.org/docs/11/tutorial-table.html).
+This is a basic, but complete, example of how to connect to a PostgresSQL server, perform a SQL `SELECT` command, and process the resulting rows.  It uses the `weather` table in the [Postgres tutorial](https://www.postgresql.org/docs/current/tutorial-table.html).
 
 ```swift
 import SwiftPostgresClient

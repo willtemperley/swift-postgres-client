@@ -22,20 +22,50 @@ public struct ResultCursor: AsyncSequence, Sendable {
     
     let connection: Connection
     let portalName: String
+    let metatdata: [ColumnMetadata]?
     let rowDecoder: RowDecoder?
+    let initialResponse: Response?
+    let commandStatus: CommandStatus?
     
     /// Either the number of rows returned or the number of rows affected by the associated statement.
     /// This will not be available until after the result set has been consumed.
+    /// The specific interpretation of this value depends on the SQL command performed:
+    ///
+    /// - `INSERT`: the number of rows inserted
+    /// - `UPDATE`: the number of rows updated
+    /// - `DELETE`: the number of rows deleted
+    /// - `SELECT` or `CREATE TABLE AS`: the number of rows retrieved
+    /// - `MOVE`: the number of rows by which the SQL cursor's position changed
+    /// - `FETCH`: the number of rows retrieved from the SQL cursor
+    /// - `COPY`: the number of rows copied
+    ///
+    /// If this `Cursor` has one or more rows, this property is `nil` until the final row has been
+    /// retrieved (in other words, until `next()` returns `nil`).
     var rowCount: Int? {
         get async {
-            await connection.commandStatus?.rowCount
+            if let commandStatus {
+                return commandStatus.rowCount
+            } else {
+                return await connection.commandStatus?.rowCount
+            }
         }
     }
     
-    init(connection: Connection, portalName: String, rowDecoder: RowDecoder? = nil) {
+    init(connection: Connection, portalName: String, metadata: [ColumnMetadata]? = nil, initialResponse: Response?) {
         self.connection = connection
         self.portalName = portalName
-        self.rowDecoder = rowDecoder
+        self.metatdata = metadata
+        if let metadata = metadata {
+            self.rowDecoder = RowDecoder(columns: metadata)
+        } else {
+            self.rowDecoder = nil
+        }
+        self.initialResponse = initialResponse
+        if case let response as CommandCompleteResponse = initialResponse {
+            self.commandStatus = response.status
+        } else {
+            self.commandStatus = nil
+        }
     }
     
     /// Creates the asynchronous iterator that produces elements of this
@@ -44,7 +74,7 @@ public struct ResultCursor: AsyncSequence, Sendable {
     /// - Returns: An instance of the `AsyncIterator` type used to produce
     /// messages in the asynchronous sequence.
     public func makeAsyncIterator() -> AsyncIterator {
-        return AsyncIterator(connection: connection, portalName: portalName, rowDecoder: rowDecoder)
+        return AsyncIterator(connection: connection, portalName: portalName, rowDecoder: rowDecoder, initialResponse: initialResponse)
     }
     
     /// An asynchronous iterator that produces the rows of this asynchronous sequence.
@@ -54,7 +84,17 @@ public struct ResultCursor: AsyncSequence, Sendable {
         var connection: Connection
         var portalName: String
         var rowDecoder: RowDecoder?
+        var initialResponse: Response?
         
+        mutating func nextResponse() async throws -> Response {
+            if let nextResponse =  initialResponse {
+                self.initialResponse = nil
+                return nextResponse
+            } else {
+                return await connection.receiveResponse()
+            }
+        }
+
         mutating public func next() async throws -> Row? {
             
             guard await connection.connected else {
@@ -62,18 +102,16 @@ public struct ResultCursor: AsyncSequence, Sendable {
             }
             
             while true {
-                let response = await connection.receiveResponse()
+                let response = try await nextResponse()
                 
                 switch response {
                 case let dataRow as DataRowResponse:
-                    do {
-                        let row = Row(columns: dataRow.columns, columnNameRowDecoder: rowDecoder)
-                        return row
-                    } catch {
-                        throw error
-                    }
+                    
+                    let row = Row(columns: dataRow.columns, columnNameRowDecoder: rowDecoder)
+                    return row
                     
                 case is EmptyQueryResponse:
+                    
                     try await connection.setCommandStatus(to: .empty)
                     try await connection.cleanupPortal(name: portalName)
                     return nil

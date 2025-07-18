@@ -20,7 +20,7 @@
 @testable import SwiftPostgresClient
 import Testing
 
-
+// TODO: Parallel test failure (individual OK)
 public struct BasicConnectionTests {
     
     let configurations = TestConfigurations()
@@ -56,8 +56,7 @@ public struct BasicConnectionTests {
         print("Total rows: \(String(describing: rowCount))")
     }
     
-    @Test
-    func connectPortal() async throws {
+    @Test func connectPortal() async throws {
         
         let config = configurations.sallyConnectionConfiguration
         let connection = try await Connection.connect(host: config.host)
@@ -108,8 +107,7 @@ public struct BasicConnectionTests {
         #expect(rowCount2 == 1)
     }
     
-    @Test
-    func transactionRollback() async throws {
+    @Test func transactionRollback() async throws {
         
         let config = configurations.sallyConnectionConfiguration
         let connection = try await Connection.connect(host: config.host)
@@ -128,8 +126,7 @@ public struct BasicConnectionTests {
         await #expect(connection.transactionStatus == .idle)
     }
     
-    @Test
-    func testInsert() async throws {
+    @Test func testInsert() async throws {
         
         let config = configurations.sallyConnectionConfiguration
         let connection = try await Connection.connect(host: config.host)

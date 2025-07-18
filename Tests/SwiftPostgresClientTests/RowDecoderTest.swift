@@ -59,8 +59,7 @@ struct RowDecoderTest {
         }
     }
     
-    @Test
-    func testBasicOperation() async throws {
+    @Test func testBasicOperation() async throws {
         try await withWeatherTable(config: config) { conn in
             
             let weatherExpectedResults = [
@@ -260,8 +259,7 @@ struct RowDecoderTest {
         }
     }
     
-    @Test
-    func testDecodableClass() async throws {
+    @Test func testDecodableClass() async throws {
         
         try await withWeatherTable(config: config) { conn in
             
@@ -297,8 +295,7 @@ struct RowDecoderTest {
     // MARK: Standard library types
     //
     
-    @Test
-    func testStandardLibraryTypes() async throws {
+    @Test func testStandardLibraryTypes() async throws {
         
         let connection = try await Connection.connect(host: config.host)
         try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
@@ -371,8 +368,7 @@ struct RowDecoderTest {
         }
     }
     
-    @Test
-    func testPostgresClientKitTypes() async throws {
+    @Test func testPostgresClientKitTypes() async throws {
         
         let connection = try await Connection.connect(host: config.host)
         try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
@@ -417,8 +413,7 @@ struct RowDecoderTest {
     // MARK: Foundation date
     //
     
-    @Test
-    func testFoundationDate() async throws {
+    @Test func testFoundationDate() async throws {
         
         let connection = try await Connection.connect(host: config.host)
         try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
@@ -490,8 +485,7 @@ struct RowDecoderTest {
     // MARK: Performance
     //
     
-    @Test
-    func testPerformance() async throws {
+    @Test func testPerformance() async throws {
         try await withWeatherTable(config: config) { conn in
             do {
                 try await conn.executeSimpleQuery("DELETE FROM weather")

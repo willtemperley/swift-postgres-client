@@ -24,8 +24,7 @@ import Foundation
 /// Tests PostgresDate.
 struct PostgresDateTest {
     
-    @Test
-    func test() {
+    @Test func test() {
         
         //
         // Test init(year:month:day) and init(date:in:).

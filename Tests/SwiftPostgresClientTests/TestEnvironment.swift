@@ -64,47 +64,7 @@ struct TestEnvironment {
     static let current = TestEnvironment()
 }
 
-/// Creates (or re-creates) the `weather` table from the Postgres tutorial and populates it
-/// with three rows. A unique temporary schema is created and dropped for each invocation to ensure
-/// test isolation.
-///
-/// - SeeAlso: https://www.postgresql.org/docs/12/tutorial-table.html
-/// - SeeAlso: https://www.postgresql.org/docs/12/tutorial-populate.html
-func createWeatherTable(configuration: ConnectionConfiguration) async throws {
-    
-    let connection = try await Connection.connect(host: configuration.host, port: configuration.port)
-    try await connection.authenticate(user: configuration.user, database: configuration.database, credential: configuration.credential)
-    let schema = "test_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
-    
-    defer {
-        Task {
-            try await connection.executeSimpleQuery("DROP SCHEMA IF EXISTS \(schema) CASCADE")
-            await connection.cancel()
-        }
-    }
-    
-    try await connection.executeSimpleQuery("CREATE SCHEMA \(schema)")
-    try await connection.executeSimpleQuery("SET search_path TO \(schema)")
-
-    try await connection.executeSimpleQuery("DROP TABLE IF EXISTS weather CASCADE")
-    
-    try await connection.executeSimpleQuery("""
-        CREATE TABLE weather (
-            city            varchar(80),
-            temp_lo         int,           -- low temperature
-            temp_hi         int,           -- high temperature
-            prcp            real,          -- precipitation
-            date            date)
-        """)
-    
-    let statement = try await connection.prepareStatement(text:
-        "INSERT INTO weather (city, temp_lo, temp_hi, prcp, date) VALUES ($1, $2, $3, $4, $5)")
-    try await statement.bind(parameterValues: [ "San Francisco", 46, 50, 0.25, "1994-11-27" ]).execute()
-    try await statement.bind(parameterValues: [ "San Francisco", 43, 57, 0.0, "1994-11-29" ]).execute()
-    try await statement.bind(parameterValues: [ "Hayward", 37, 54, nil, "1994-11-29" ]).execute()
-    try await statement.close()
-}
-
+/// Creates and tears down an uniquely named schema, allowing tests to be run in parallel.
 func withIsolatedSchema(
     config: ConnectionConfiguration,
     perform: @Sendable (_ conn: Connection) async throws -> Void
@@ -129,6 +89,12 @@ func withIsolatedSchema(
     await conn.cancel()
 }
 
+/// Creates (or re-creates) the `weather` table from the Postgres tutorial and populates it
+/// with three rows. A unique temporary schema is created and dropped for each invocation to ensure
+/// test isolation.
+///
+/// - SeeAlso: https://www.postgresql.org/docs/current/tutorial-table.html
+/// - SeeAlso: https://www.postgresql.org/docs/current/tutorial-populate.html
 func withWeatherTable(
     config: ConnectionConfiguration,
     perform: @Sendable (_ conn: Connection) async throws -> Void
@@ -148,15 +114,10 @@ func withWeatherTable(
         try await statement.bind(parameterValues: [ "San Francisco", 46, 50, 0.25, "1994-11-27" ]).execute()
         try await statement.bind(parameterValues: [ "San Francisco", 43, 57, 0.0, "1994-11-29" ]).execute()
         try await statement.bind(parameterValues: [ "Hayward", 37, 54, nil, "1994-11-29" ]).execute()
-        print("Closing statement...")
         try await statement.close()
-        
-        print("Performing work...")
         try await perform(conn)
     }
 }
-
-
 
 //
 // MARK: Localization
@@ -241,17 +202,15 @@ func assertApproximatelyEqual(_ dc1: DateComponents,
                                  _ dc2: DateComponents,
                                  file: StaticString = #file, line: UInt = #line) {
     
-    #expect( dc1.calendar == dc2.calendar, "DateComponents.calendar")//, file: file, line: line)
+    #expect( dc1.calendar == dc2.calendar, "DateComponents.calendar")
     
     #expect(
         dc1.timeZone == dc2.timeZone,
         "DateComponents.timeZone")
-//    , file: file, line: line)
     
     #expect(
         dc1.era == dc2.era,
         "DateComponents.era")
-//    , file: file, line: line)
     
     assertBothNilOrBothNotNil(
         dc1.year, dc2.year,

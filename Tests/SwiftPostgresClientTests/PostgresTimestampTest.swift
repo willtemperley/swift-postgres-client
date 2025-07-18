@@ -24,8 +24,7 @@ import Foundation
 /// Tests PostgresTimestamp.
 struct PostgresTimestampTest  {
     
-    @Test
-    func test() {
+    @Test func test() {
         
         //
         // Test init(year:month:day:hour:minute:second:nanosecond) and init(date:in:).

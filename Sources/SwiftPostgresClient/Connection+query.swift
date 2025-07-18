@@ -45,7 +45,7 @@ extension Connection {
     func query(
         portalName: String,
         statement: Statement,
-        rowDecoder: RowDecoder?
+        metadata: [ColumnMetadata]?
     ) async throws -> ResultCursor {
         
         state = .querySent
@@ -56,7 +56,14 @@ extension Connection {
         let flushRequest = FlushRequest()
         try await sendRequest(flushRequest)
         
-        return ResultCursor(connection: self, portalName: portalName, rowDecoder: rowDecoder)
+        // The first response of the query is evaluated eagerly to check its
+        // type.
+        // An zero-result query could immediately give a CommandCompleteResponse
+        // This also prevents some issues with undrained message queues.
+        // TODO: check error response
+        let response = await receiveResponse()
+
+        return ResultCursor(connection: self, portalName: portalName, metadata: metadata, initialResponse: response)
     }
     
     public func closeStatement(name: String) async throws {

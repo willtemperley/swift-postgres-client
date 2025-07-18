@@ -1,7 +1,7 @@
-// Test.swift
+// Logger.swift
 // SwiftPostgresClient
 //
-// Created by Will Temperley on 17/07/2025. All rights reserved.
+// Created by Will Temperley on 18/07/2025. All rights reserved.
 // Copyright 2025 Will Temperley.
 // 
 // Copying or reproduction of this file via any medium requires prior express
@@ -13,14 +13,20 @@
 // -----------------------------------------------------------------------------
 
 
-import Testing
+#if DEBUG
+#if canImport(os)
+import os
+private let logger = Logger(subsystem: "com.geolocalised.swiftpostgresclient", category: "debug")
+#endif
+#endif
 
-struct Test {
-    
-    // TODO: check connection.execute() throws an error if a select is run
-
-    @Test func todo() async throws {
-        
-    }
-
+public func logWarning(_ message: String) {
+    #if DEBUG
+    #if canImport(os)
+    logger.warning("\(message, privacy: .public)")
+    #else
+    print("Warning: \(message)")
+    #endif
+    #endif
 }
+

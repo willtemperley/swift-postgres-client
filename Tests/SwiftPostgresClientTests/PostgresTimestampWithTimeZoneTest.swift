@@ -24,8 +24,7 @@ import Foundation
 /// Tests PostgresTimestampWithTimeZone.
 struct PostgresTimestampWithTimeZoneTest {
     
-    @Test
-    func test() {
+    @Test func test() {
         
         //
         // Test init(year:month:day:hour:minute:second:nanosecond:timeZone) and init(date:).

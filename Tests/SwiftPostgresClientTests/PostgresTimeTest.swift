@@ -24,8 +24,7 @@ import Foundation
 /// Tests PostgresTime.
 struct PostgresTimeTest {
     
-    @Test
-    func test() {
+    @Test func test() {
         
         //
         // Test init(hour:minute:second:nanosecond) and init(date:in:).

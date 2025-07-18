@@ -26,8 +26,7 @@ struct DataTypeTest {
     
     let configurations = TestConfigurations()
     
-    @Test
-    func test() async {
+    @Test func test() async {
         
         let connectionConfig = configurations.terryConnectionConfiguration
 

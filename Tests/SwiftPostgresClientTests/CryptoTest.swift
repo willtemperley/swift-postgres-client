@@ -26,8 +26,7 @@ struct CryptoTest {
     
     let includeSlowerTestCases = false
     
-    @Test
-    func testMD5() {
+    @Test func testMD5() {
         
         func md5(message: String, expectedDigest: String) {
             let data = Data(message.utf8)
@@ -58,8 +57,7 @@ struct CryptoTest {
             expectedDigest: "57edf4a22be3c955ac49da2e2107b67a")
     }
     
-    @Test
-    func testSHA256() {
+    @Test func testSHA256() {
         
         func sha256(message: String, expectedDigest: String) {
             let data = Data(message.utf8)
@@ -91,8 +89,7 @@ struct CryptoTest {
         }
     }
     
-    @Test
-    func testHMACSHA256() {
+    @Test func testHMACSHA256() {
         
         func testHMACSHA256(key: Data, message: Data, expectedDigest: String) {
             let data = Crypto.hmacSHA256(key: key, message: message)
@@ -230,8 +227,7 @@ struct CryptoTest {
                 """)
     }
     
-    @Test
-    func testPBKDF2HMACSHA256() {
+    @Test func testPBKDF2HMACSHA256() {
         
         func testPBKDF2HMACSHA256(password: Data,
                                  salt: Data,

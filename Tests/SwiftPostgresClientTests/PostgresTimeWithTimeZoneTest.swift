@@ -24,8 +24,7 @@ import Foundation
 /// Tests PostgresTimeWithTimeZone.
 struct PostgresTimeWithTimeZoneTest {
     
-    @Test
-    func test() {
+    @Test func test() {
         
         let plusOneHour = TimeZone(secondsFromGMT: 3600)!
         let minusOneHour = TimeZone(secondsFromGMT: -3600)!
@@ -220,5 +219,3 @@ struct PostgresTimeWithTimeZoneTest {
         checkTime(PostgresTimeWithTimeZone(expectedDescription)!)
     }
 }
-
-// EOF

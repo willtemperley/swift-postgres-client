@@ -23,8 +23,7 @@ import Foundation
 
 struct ISO8601Test {
     
-    @Test
-    func parseTimestampWithTimeZone() {
+    @Test func parseTimestampWithTimeZone() {
                 
         func check(
             _ string: String,
@@ -141,8 +140,7 @@ struct ISO8601Test {
         checkInvalid("2001-02-03 12:34:61.789Z")
     }
 
-    @Test
-    func ParseTimestamp() {
+    @Test func parseTimestamp() {
                 
         func check(
             _ string: String,
@@ -219,8 +217,7 @@ struct ISO8601Test {
         checkInvalid("2001-02-03 12:34:61.789")
     }
 
-    @Test
-    func parseDate() {
+    @Test func parseDate() {
                 
         func check(
             _ string: String,
@@ -268,8 +265,7 @@ struct ISO8601Test {
         checkInvalid("2001-02-29")
     }
 
-    @Test
-    func parseTime() {
+    @Test func parseTime() {
                 
         func check(
             _ string: String,
@@ -328,8 +324,7 @@ struct ISO8601Test {
         checkInvalid("12:34:61.789")
     }
 
-    @Test
-    func parseTimesWithTimeZone() {
+    @Test func parseTimesWithTimeZone() {
                 
         func check(
             _ string: String,
@@ -443,8 +438,7 @@ struct ISO8601Test {
         checkInvalid("12:34:61.789Z")
     }
     
-    @Test
-    func formatTimestampWithTimeZone() {
+    @Test func formatTimestampWithTimeZone() {
                 
         func check(_ string: String, _ expectedString: String) {
             let date = ISO8601.parseTimestampWithTimeZone(string)!
@@ -465,8 +459,7 @@ struct ISO8601Test {
         check("2001-02-03 12:34:56.789-01:45", "2001-02-03 14:19:56.789+00:00")
     }
     
-    @Test
-    func formatTimestamp() {
+    @Test func formatTimestamp() {
                 
         func check(_ string: String, _ expectedString: String) {
             let dateComponents = ISO8601.parseTimestamp(string)!
@@ -483,8 +476,7 @@ struct ISO8601Test {
         check("2000-12-23 04:05:06", "2000-12-23 04:05:06.000")
     }
 
-    @Test
-    func formatDate() {
+    @Test func formatDate() {
                 
         func check(_ string: String, _ expectedString: String) {
             let dateComponents = ISO8601.parseDate(string)!
@@ -497,8 +489,7 @@ struct ISO8601Test {
         check("2000-12-23", "2000-12-23")
     }
 
-    @Test
-    func formatTime() {
+    @Test func formatTime() {
                 
         func check(_ string: String, _ expectedString: String) {
             let dateComponents = ISO8601.parseTime(string)!
@@ -515,8 +506,7 @@ struct ISO8601Test {
         check("04:05:06", "04:05:06.000")
     }
 
-    @Test
-    func formatTimeWithTimeZone() {
+    @Test func formatTimeWithTimeZone() {
                 
         func check(_ string: String, _ expectedString: String) {
             let dateComponents = ISO8601.parseTimeWithTimeZone(string)!
@@ -537,8 +527,7 @@ struct ISO8601Test {
         check("12:34:56.789-01:45", "12:34:56.789-01:45")
     }
 
-    @Test
-    func fateComponentsFromDate() {
+    @Test func fateComponentsFromDate() {
                 
         func check(
             _ string: String, _ timeZone: TimeZone,
@@ -569,8 +558,7 @@ struct ISO8601Test {
         check("2001-02-03 12:34:56.789Z", tzMinus0100, 2001, 2, 3, 11, 34, 56, 789_000_000)
     }
     
-    @Test
-    func timeZoneHasFixedOffset() {
+    @Test func timeZoneHasFixedOffset() {
 
         let tzUTC = utcTimeZone
         let tzPlus0100 = TimeZone(secondsFromGMT: 3600)!

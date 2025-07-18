@@ -36,11 +36,11 @@ extension Connection {
         }
     }
     
-    func beginTransaction() async throws {
+    public func beginTransaction() async throws {
         try await executeSimpleQuery("BEGIN;")
     }
     
-    func commitTransaction() async throws {
+    public func commitTransaction() async throws {
         try await executeSimpleQuery("COMMIT;")
     }
     

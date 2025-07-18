@@ -35,16 +35,13 @@ extension Connection {
         
         try await receiveResponse(type: BindCompleteResponse.self)
         
-        var rowDecoder: RowDecoder?
+        var metadata: [ColumnMetadata]?
         if columnMetadata {
-            let metadata = try await retrieveColumnMetadata(portalName: portalName)
-            if let metadata {
-                rowDecoder = RowDecoder(columns: metadata)
-            }
+            metadata = try await retrieveColumnMetadata(portalName: portalName)
         }
         portalStatus[portalName] = .open
         
-        return Portal(name: portalName, rowDecoder: rowDecoder, statement: statement, connection: self)
+        return Portal(name: portalName, metadata: metadata, statement: statement, connection: self)
     }
     
     func cleanupPortal(name: String) async throws {

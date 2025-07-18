@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "SwiftPostgresClient",
     platforms: [
-        .macOS(.v10_15), .iOS(.v14), .tvOS(.v13)
+        .macOS(.v11), .iOS(.v14), .tvOS(.v14)
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.

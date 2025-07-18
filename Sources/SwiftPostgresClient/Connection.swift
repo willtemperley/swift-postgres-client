@@ -22,7 +22,7 @@ import Network
 import CryptoKit
 
 /// A Connection actor provides asynchronous access to a PostgreSQL server.
-actor Connection {
+public actor Connection {
     
     enum ConnectionState {
         case awaitingAuthentication
@@ -50,6 +50,7 @@ actor Connection {
     var transactionStatus: TransactionStatus = .idle
     
     var commandStatus: CommandStatus?
+    var peekedResponse: Response?
     
     private init(socket: NetworkConnection, certificateHash: Data) {
         self.socket = socket
@@ -122,7 +123,6 @@ actor Connection {
     }
     
     func updateState(for response: Response) {
-        print("updating state for \(response)")
         switch response {
         case is DataRowResponse, is RowDescriptionResponse:
             state = .awaitingQueryResult
@@ -142,7 +142,6 @@ actor Connection {
             break
         }
     }
-    
     
     @discardableResult
     func receiveResponse<T: Response>(type: T.Type) async throws -> T {
@@ -232,6 +231,7 @@ actor Connection {
             return
             
         case .querySent, .awaitingQueryResult, .needsDrain:
+            logWarning("State is \(state), emptying message queue and sending sync request.")
             // Cleanup all open portals
             for name in self.portalStatus.keys {
                 try await sendRequest(ClosePortalRequest(name: name))

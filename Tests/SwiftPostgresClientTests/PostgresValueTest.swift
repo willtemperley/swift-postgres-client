@@ -24,8 +24,7 @@ import Foundation
 /// Tests PostgresValue.
 struct PostgresValueTest {
     
-    @Test
-    func test() throws {
+    @Test func test() throws {
         
         let frFrLocale = Locale(identifier: "fr_FR")
         

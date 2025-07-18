@@ -28,20 +28,20 @@ import Foundation
 public struct Portal {
     
     let name: String
-    let rowDecoder: RowDecoder?
+    let metadata: [ColumnMetadata]?
     let statement: Statement
     unowned let connection: Connection
     
     /// Executes the associated prepared statement with already bound parameters.
     ///
     /// - Returns: an `AsyncSequence` of rows. This is a single use iterator.
-    func query() async throws -> ResultCursor {
+    public func query() async throws -> ResultCursor {
         
-        return try await connection.query(portalName: name, statement: statement, rowDecoder: rowDecoder)
+        return try await connection.query(portalName: name, statement: statement, metadata: metadata)
     }
     
     @discardableResult
-    func execute() async throws -> CommandStatus {
+    public func execute() async throws -> CommandStatus {
         
         let executeRequest = ExecuteRequest(portalName: name, statement: statement)
         try await connection.sendRequest(executeRequest)
@@ -52,5 +52,21 @@ public struct Portal {
         try await connection.cleanupPortal(name: name)
         return response.status
     }
-}
+    
+    /// Executes a query that returns a single value (e.g. COUNT, SUM, etc.).
+    public func singleValue() async throws -> PostgresValue? {
+        
+        let cursor = try await query()
+        var iterator = cursor.makeAsyncIterator()
+        let row = try await iterator.next()
+        if let row {
+            let next = try await iterator.next()
+            if next != nil {
+                try await connection.recoverIfNeeded()
+            }
+            return row.columns.first?.postgresValue
+        }
+        return nil
+    }
 
+}
