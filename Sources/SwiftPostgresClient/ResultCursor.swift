@@ -22,6 +22,7 @@ public struct ResultCursor: AsyncSequence, Sendable {
     
     let connection: Connection
     let portalName: String
+    let extendedProtcol: Bool
     let metatdata: [ColumnMetadata]?
     let rowDecoder: RowDecoder?
     let initialResponse: Response?
@@ -51,9 +52,10 @@ public struct ResultCursor: AsyncSequence, Sendable {
         }
     }
     
-    init(connection: Connection, portalName: String, metadata: [ColumnMetadata]? = nil, initialResponse: Response?) {
+    init(connection: Connection, portalName: String, extendedProtocol: Bool = true, metadata: [ColumnMetadata]? = nil, initialResponse: Response?) {
         self.connection = connection
         self.portalName = portalName
+        self.extendedProtcol = extendedProtocol
         self.metatdata = metadata
         if let metadata = metadata {
             self.rowDecoder = RowDecoder(columns: metadata)
@@ -74,7 +76,14 @@ public struct ResultCursor: AsyncSequence, Sendable {
     /// - Returns: An instance of the `AsyncIterator` type used to produce
     /// messages in the asynchronous sequence.
     public func makeAsyncIterator() -> AsyncIterator {
-        return AsyncIterator(connection: connection, portalName: portalName, rowDecoder: rowDecoder, initialResponse: initialResponse)
+        return AsyncIterator(
+            connection: connection,
+            portalName: portalName,
+            extendedProtocol: extendedProtcol,
+            commandComplete: commandStatus != nil,
+            rowDecoder: rowDecoder,
+            initialResponse: initialResponse
+        )
     }
     
     /// An asynchronous iterator that produces the rows of this asynchronous sequence.
@@ -83,6 +92,9 @@ public struct ResultCursor: AsyncSequence, Sendable {
         
         var connection: Connection
         var portalName: String
+        var extendedProtocol: Bool
+        // Zero-row portals will be cleaned up before the cursor is created
+        var commandComplete: Bool
         var rowDecoder: RowDecoder?
         var initialResponse: Response?
         
@@ -122,7 +134,9 @@ public struct ResultCursor: AsyncSequence, Sendable {
                     
                     // TODO: consider handling this upstream - it's known in the message queue
                     try await connection.setCommandStatus(to: commandStatus)
-                    try await connection.cleanupPortal(name: portalName)
+                    if extendedProtocol, !commandComplete {
+                        try await connection.cleanupPortal(name: portalName)
+                    }
                     return nil
                     
                 default:

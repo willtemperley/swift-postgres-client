@@ -35,7 +35,7 @@ struct DataTypeTest {
             try await connection.authenticate(user: connectionConfig.user, database: connectionConfig.database, credential: connectionConfig.credential)
 
             var text = "DROP TABLE IF EXISTS datatypetest"
-            try await connection.executeSimpleQuery(text)
+            try await connection.execute(text)
 
             text = """
                 CREATE TABLE datatypetest (
@@ -57,7 +57,7 @@ struct DataTypeTest {
                     ba          bytea
                 )
                 """
-            try await connection.executeSimpleQuery(text)
+            try await connection.execute(text)
 
             var lastSequence = 0
 

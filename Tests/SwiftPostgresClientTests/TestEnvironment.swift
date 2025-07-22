@@ -69,29 +69,35 @@ func withIsolatedSchema(
     config: ConnectionConfiguration,
     perform: @Sendable (_ conn: Connection) async throws -> Void
 ) async throws {
-    let conn = try await Connection.connect(host: config.host, port: config.port)
+    var conn = try await Connection.connect(host: config.host, port: config.port)
     try await conn.authenticate(user: config.user, database: config.database, credential: config.credential)
 
     let schema = "test_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
 
     do {
-        try await conn.executeSimpleQuery("CREATE SCHEMA \(schema)")
-        try await conn.executeSimpleQuery("SET search_path TO \(schema)")
+        try await conn.execute("CREATE SCHEMA \(schema)")
+        try await conn.execute("SET search_path TO \(schema)")
         try await perform(conn)
     } catch {
-        try? await conn.executeSimpleQuery("DROP SCHEMA IF EXISTS \(schema) CASCADE")
-        await conn.cancel()
+        try? await conn.execute("DROP SCHEMA IF EXISTS \(schema) CASCADE")
+        await conn.close()
         throw error
+    }
+    
+    if await conn.closed {
+        // Recreate connection to clean up.
+        conn = try await Connection.connect(host: config.host, port: config.port)
+        try await conn.authenticate(user: config.user, database: config.database, credential: config.credential)
     }
 
     try await conn.recoverIfNeeded()
-    try await conn.executeSimpleQuery("DROP SCHEMA IF EXISTS \(schema) CASCADE")
-    await conn.cancel()
+    try await conn.execute("DROP SCHEMA IF EXISTS \(schema) CASCADE")
+    await conn.close()
 }
 
 /// Creates (or re-creates) the `weather` table from the Postgres tutorial and populates it
 /// with three rows. A unique temporary schema is created and dropped for each invocation to ensure
-/// test isolation.
+/// test isolation, necessary as Swift Testing runs tests in parallel.
 ///
 /// - SeeAlso: https://www.postgresql.org/docs/current/tutorial-table.html
 /// - SeeAlso: https://www.postgresql.org/docs/current/tutorial-populate.html
@@ -100,7 +106,7 @@ func withWeatherTable(
     perform: @Sendable (_ conn: Connection) async throws -> Void
 ) async throws {
     try await withIsolatedSchema(config: config) { conn in
-        try await conn.executeSimpleQuery("""
+        try await conn.execute("""
             CREATE TABLE weather (
                 city varchar(80),
                 temp_lo int,

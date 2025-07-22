@@ -36,21 +36,15 @@ public struct Portal {
     ///
     /// - Returns: an `AsyncSequence` of rows. This is a single use iterator.
     public func query() async throws -> ResultCursor {
-        
         return try await connection.query(portalName: name, statement: statement, metadata: metadata)
     }
     
+    /// Executes the associated prepared statement with already bound parameters.
+    ///
+    /// - Returns: A `CommandStatus` indicating the operation type and number of rows affected.
     @discardableResult
     public func execute() async throws -> CommandStatus {
-        
-        let executeRequest = ExecuteRequest(portalName: name, statement: statement)
-        try await connection.sendRequest(executeRequest)
-        let flushRequest = FlushRequest()
-        try await connection.sendRequest(flushRequest)
-
-        let response = try await connection.receiveResponse(type: CommandCompleteResponse.self)
-        try await connection.cleanupPortal(name: name)
-        return response.status
+        return try await connection.execute(portalName: name, statement: statement)
     }
     
     /// Executes a query that returns a single value (e.g. COUNT, SUM, etc.).
@@ -69,4 +63,10 @@ public struct Portal {
         return nil
     }
 
+    /// Is this portal closed. Note this uses a server query.
+    public var closed: Bool {
+        get async throws {
+            return try await connection.listOpenPortals().contains(where: { $0 == name })
+        }
+    }
 }

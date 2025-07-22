@@ -29,13 +29,7 @@ public actor Connection {
         case ready
         case querySent
         case awaitingQueryResult
-        case needsDrain
-        case closed
-    }
-    
-    enum PortalState {
-        case open
-        case closing
+        case errorRecieved
         case closed
     }
     
@@ -45,18 +39,30 @@ public actor Connection {
     
     let certificateHash: Data
     
-    var portalStatus: [String: PortalState] = [:]
     var state: ConnectionState = .closed
     var transactionStatus: TransactionStatus = .idle
     
     var commandStatus: CommandStatus?
-    var peekedResponse: Response?
+    
+    var openStatements: Set<String> = .init()
+    
+    public let notifications: AsyncStream<ServerMessage>
+    private let notificationContinuation: AsyncStream<ServerMessage>.Continuation
     
     private init(socket: NetworkConnection, certificateHash: Data) {
         self.socket = socket
         self.certificateHash = certificateHash
         precondition(socket.connected)
         self.state = .awaitingAuthentication
+        
+        // Set up the notification stream
+        var continuation: AsyncStream<ServerMessage>.Continuation!
+        self.notifications = AsyncStream { c in
+            continuation = c
+        }
+        self.notificationContinuation = continuation
+        
+        // Start the message queue
         Task { await receiveLoop() }
     }
     
@@ -80,14 +86,20 @@ public actor Connection {
         )
     }
     
-    func cancel() async {
+    public func close() async {
         let terminateRequest = TerminateRequest()
         try? await sendRequest(terminateRequest) // consumes any Error
+        state = .closed
+        openStatements = .init()
         socket.cancel()
     }
     
     var connected: Bool {
         socket.connected
+    }
+    
+    var closed: Bool {
+        state == .closed
     }
     
     private func receiveLoop() async {
@@ -131,16 +143,21 @@ public actor Connection {
             state = .ready
             
         case is ErrorResponse:
-            state = .needsDrain  // or maybe .errorRecovering?
-            
-        case is CommandCompleteResponse:
-            // possibly still in streaming mode; don’t change state yet
-            break
+            state = .errorRecieved  // or maybe .errorRecovering?
             
         default:
             // no change
             break
         }
+    }
+    
+    
+    private func emitNotification(_ notification: ServerMessage) {
+        notificationContinuation.yield(notification)
+    }
+
+    public func closeNotificationStream() {
+        notificationContinuation.finish()
     }
     
     @discardableResult
@@ -151,20 +168,19 @@ public actor Connection {
             // TODO: non-command messages should be published as another async stream
             switch message {
             case let notification as NotificationResponse:
-                continue
-                //                print("notification: \(notification)")
+                emitNotification(.notification(pid: Int32(notification.processId), channel: notification.channel, payload: notification.payload))
             case let status as ParameterStatusResponse:
-                continue
-                //                print("parameter status: \(status)")
+                try await Parameter.checkParameterStatusResponse(status, connection: self)
+                emitNotification(.parameter(name: status.name, value: status.value))
             case let keyData as BackendKeyDataResponse:
+                emitNotification(.backendKeyData(pid: keyData.processID, secretKey: keyData.secretKey))
                 continue
-                //                print("backend key data: \(keyData)")
             case let notice as NoticeResponse:
-                continue
-                //                print("notice: \(notice)")
+                emitNotification(.notice(description: notice.description))
             default:
                 // update transaction status
                 if let readyForQuery = message as? ReadyForQueryResponse {
+                    state = .ready
                     if let status = TransactionStatus(rawValue: readyForQuery.transactionStatus) {
                         self.transactionStatus = status
                     } else {
@@ -175,7 +191,7 @@ public actor Connection {
                     return typed
                 } else if let errorMessage = message as? ErrorResponse {
                     
-                    print(errorMessage.description)
+                    state = .errorRecieved
                     throw PostgresError.protocolError(errorMessage.description)
                 } else {
                     throw PostgresError.protocolError("Unexpected message type: \(message)")
@@ -230,17 +246,17 @@ public actor Connection {
         case .ready:
             return
             
-        case .querySent, .awaitingQueryResult, .needsDrain:
+        case .querySent, .awaitingQueryResult, .errorRecieved:
             logWarning("State is \(state), emptying message queue and sending sync request.")
-            // Cleanup all open portals
-            for name in self.portalStatus.keys {
-                try await sendRequest(ClosePortalRequest(name: name))
-                try await sendRequest(FlushRequest())
-                self.portalStatus.removeValue(forKey: name)
-            }
             
             try await sendRequest(SyncRequest())
             try await sendRequest(FlushRequest())
+            
+            // Cleanup all open portals
+//            for name in try await listOpenPortals() {
+//                try await sendRequest(ClosePortalRequest(name: name))
+//                try await sendRequest(FlushRequest())
+//            }
 
             // Drain all messages until ReadyForQuery
             while true {

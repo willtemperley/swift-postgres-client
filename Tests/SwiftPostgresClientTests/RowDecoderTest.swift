@@ -488,7 +488,7 @@ struct RowDecoderTest {
     @Test func testPerformance() async throws {
         try await withWeatherTable(config: config) { conn in
             do {
-                try await conn.executeSimpleQuery("DELETE FROM weather")
+                try await conn.execute("DELETE FROM weather")
                 
                 // INSERT 1000 days of random weather records for San Jose.
                 let text = "INSERT INTO weather (date, city, temp_lo, temp_hi, prcp) VALUES ($1, $2, $3, $4, $5)"
@@ -519,9 +519,9 @@ struct RowDecoderTest {
                     
                     weatherHistory.append(weather)
                     
-                    let result = try await statement.bind(parameterValues:
-                                                            [ weather.date, weather.city, weather.temp_lo, weather.temp_hi, weather.prcp ])
-                        .execute()
+                    let result = try await statement.bind(
+                        parameterValues: [ weather.date, weather.city, weather.temp_lo, weather.temp_hi, weather.prcp ]
+                    ).execute()
                     
                     #expect(result.rowCount ==  1)
                 }
@@ -554,7 +554,6 @@ struct RowDecoderTest {
         }
     }
     
-    
     //
     // MARK: Helper functions
     //
@@ -566,16 +565,14 @@ struct RowDecoderTest {
         retrieveColumnMetadata: Bool = true,
         defaultTimeZone: TimeZone? = nil
     ) async throws -> [T] where T: Decodable {
+        
         try await connection.recoverIfNeeded()
         let statement = try await connection.prepareStatement(text: sql)
         let cursor = try await statement.bind(columnMetadata: retrieveColumnMetadata).query()
-        var results = [T]()
         
-        for try await row in cursor {
-            results  += [ try row.decodeByColumnName(T.self, defaultTimeZone: defaultTimeZone) ]
-        }
-        
-        return results
+        return try await cursor.map { row in
+            try row.decodeByColumnName(T.self, defaultTimeZone: defaultTimeZone)
+        }.reduce(into: [T]()) { $0.append($1) }
     }
     
     func decodeByColumnIndex<T>(
@@ -584,14 +581,14 @@ struct RowDecoderTest {
         using connection: Connection,
         defaultTimeZone: TimeZone? = nil
     ) async throws -> [T] where T: Decodable {
+        
         try await connection.recoverIfNeeded()
         let statement = try await connection.prepareStatement(text: sql)
         let cursor = try await statement.bind(columnMetadata: false).query()
-        var results = [T]()
-        for try await row in cursor {
-            results.append(try row.decodeByColumnIndex(T.self, defaultTimeZone: defaultTimeZone))
-        }
-        return results
+        
+        return try await cursor.map { row in
+            try row.decodeByColumnIndex(T.self, defaultTimeZone: defaultTimeZone)
+        }.reduce(into: [T]()) { $0.append($1) }
     }
     
     func time(_ name: String, operation: () async throws -> Void) async throws {

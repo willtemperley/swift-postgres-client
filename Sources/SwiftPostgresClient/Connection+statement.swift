@@ -30,6 +30,10 @@ extension Connection {
     /// - Returns: a `PreparedStatement` ready for parameter binding.
     public func prepareStatement(text: String) async throws -> PreparedStatement {
         
+        if self.state != .ready {
+            throw PostgresError.invalidState("Expected connection to be in state .ready, but was \(self.state)")
+        }
+        
         let statement = Statement(text: text)
         let parseRequest = ParseRequest(statement: statement)
         try await sendRequest(parseRequest)
@@ -39,34 +43,12 @@ extension Connection {
         
         try await receiveResponse(type: ParseCompleteResponse.self)
         
+        self.openStatements.insert(statement.name)
         return PreparedStatement(name: statement.name, statement: statement, connection: self)
     }
     
-    func query(
-        portalName: String,
-        statement: Statement,
-        metadata: [ColumnMetadata]?
-    ) async throws -> ResultCursor {
-        
-        state = .querySent
-        
-        let executeRequest = ExecuteRequest(portalName: portalName, statement: statement)
-        try await sendRequest(executeRequest)
-        
-        let flushRequest = FlushRequest()
-        try await sendRequest(flushRequest)
-        
-        // The first response of the query is evaluated eagerly to check its
-        // type.
-        // An zero-result query could immediately give a CommandCompleteResponse
-        // This also prevents some issues with undrained message queues.
-        // TODO: check error response
-        let response = await receiveResponse()
-
-        return ResultCursor(connection: self, portalName: portalName, metadata: metadata, initialResponse: response)
-    }
-    
-    public func closeStatement(name: String) async throws {
+    /// Close a prepared statement
+    func closeStatement(name: String) async throws {
         
         let closeStatementRequest = CloseStatementRequest(name: name)
         try await sendRequest(closeStatementRequest)
@@ -75,9 +57,10 @@ extension Connection {
         try await sendRequest(flushRequest)
         
         try await receiveResponse(type: CloseCompleteResponse.self)
+        self.openStatements.remove(name)
     }
     
-    // used for decoding structs using column names
+    /// Returns metadata used for decoding structs via column names
     func retrieveColumnMetadata(portalName: String) async throws -> [ColumnMetadata]? {
         
         var columns: [ColumnMetadata]? = nil

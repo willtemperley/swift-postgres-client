@@ -26,20 +26,20 @@
 /// server, it checks the values of certain parameters.
 ///
 /// Together, these actions help ensure a predictable environment for PostgresClientKit.
-internal struct Parameter {
+struct Parameter {
     
     /// The parameter name.
-    internal let name: String
+    let name: String
     
     /// The parameter values allowed by PostgresClientKit, or `nil` for any value.
-    internal let allowedValues: [String]?
+    let allowedValues: [String]?
     
     /// The parameter value set by PostgresClientKit in creating a `Connection`, or `nil` to not
     /// set a value.
-    internal let valueSetWhenConnecting: String?
+    let valueSetWhenConnecting: String?
     
     /// The parameters of interest to PostgresClientKit.
-    internal static let values = [
+    static let values = [
         
         // PostgresClientKit requires strings received from the Postgres server to be UTF8 format.
         Parameter(name: "client_encoding",
@@ -72,8 +72,8 @@ internal struct Parameter {
     /// - Parameter response: the response to check
     /// - Throws: `PostgresError.invalidParameterValue` if the parameter does not have an allowed
     ///     value
-    internal static func checkParameterStatusResponse(_ response: ParameterStatusResponse,
-                                                      connection: Connection) throws {
+    static func checkParameterStatusResponse(_ response: ParameterStatusResponse,
+                                                      connection: Connection) async throws {
         
         if let parameter = values.first(where: {
             $0.name == response.name
@@ -83,11 +83,11 @@ internal struct Parameter {
             let allowedValues = parameter.allowedValues!
             
             // The invalid parameter change already ocurred.  This connection is toast.
-//            connection.cancel()
+            await connection.close()
 
-//            throw PostgresError.invalidParameterValue(name: response.name,
-//                                                      value: response.value,
-//                                                      allowedValues: allowedValues)
+            throw PostgresError.invalidParameterValue(name: response.name,
+                                                      value: response.value,
+                                                      allowedValues: allowedValues)
         }
     }
 }

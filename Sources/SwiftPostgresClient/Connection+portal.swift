@@ -26,6 +26,11 @@ extension Connection {
         parameterValues: [PostgresValueConvertible?] = [],
         columnMetadata: Bool = false
     ) async throws -> Portal {
+        
+        if state == .closed {
+            throw PostgresError.connectionClosed
+        }
+        
         let portalName = UUID().uuidString
         let bindRequest = BindRequest(name: portalName, statement: statement, parameterValues: parameterValues)
         try await sendRequest(bindRequest)
@@ -39,9 +44,50 @@ extension Connection {
         if columnMetadata {
             metadata = try await retrieveColumnMetadata(portalName: portalName)
         }
-        portalStatus[portalName] = .open
         
         return Portal(name: portalName, metadata: metadata, statement: statement, connection: self)
+    }
+    
+    func query(
+        portalName: String,
+        statement: Statement,
+        metadata: [ColumnMetadata]?
+    ) async throws -> ResultCursor {
+        
+        state = .querySent
+        
+        let executeRequest = ExecuteRequest(portalName: portalName, statement: statement)
+        try await sendRequest(executeRequest)
+        
+        let flushRequest = FlushRequest()
+        try await sendRequest(flushRequest)
+        
+        // The first response of the query is evaluated eagerly to check its type.
+        let response = await receiveResponse()
+        
+        // A zero-result query immediately gives a CommandCompleteResponse
+        if response is CommandCompleteResponse {
+            try await cleanupPortal(name: portalName)
+        }
+
+        return ResultCursor(connection: self, portalName: portalName, metadata: metadata, initialResponse: response)
+    }
+    
+    func execute(
+        portalName: String,
+        statement: Statement
+    ) async throws -> CommandStatus {
+        
+        state = .querySent
+        
+        let executeRequest = ExecuteRequest(portalName: portalName, statement: statement)
+        try await sendRequest(executeRequest)
+        let flushRequest = FlushRequest()
+        try await sendRequest(flushRequest)
+
+        let response = try await receiveResponse(type: CommandCompleteResponse.self)
+        try await cleanupPortal(name: portalName)
+        return response.status
     }
     
     func cleanupPortal(name: String) async throws {
@@ -50,16 +96,10 @@ extension Connection {
         try await sendRequest(FlushRequest())
         try await receiveResponse(type: CloseCompleteResponse.self)
         
-        let status = portalStatus.removeValue(forKey: name)
-        if status == nil {
-            throw PostgresError.protocolError("Missing portal status for \(name)")
-        }
-        
         // Finalize the transaction (unless already in BEGIN/COMMIT)
         try await sendRequest(SyncRequest())
         
         // transaction status always set on ReadyForQueryResponse
         try await receiveResponse(type: ReadyForQueryResponse.self)
     }
-
 }

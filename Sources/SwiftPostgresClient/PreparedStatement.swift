@@ -28,6 +28,7 @@ public struct PreparedStatement: Sendable {
     let statement: Statement
     unowned let connection: Connection
     
+    
     /// Binds the parameters to the prepared statement. This has no effect on the statement itself,  instead
     /// returning a `Portal` which represents the execution state of a query.
     /// - Parameters:
@@ -38,7 +39,32 @@ public struct PreparedStatement: Sendable {
         return try await connection.createPortal(statement: statement, parameterValues: parameterValues, columnMetadata: columnMetadata)
     }
     
+    /// Executes prepared statement with zero bound parameters.
+    /// - Returns: a `CommandStatus` indicating the effect the statement had.
+    public func execute() async throws -> CommandStatus {
+        if await closed {
+            throw PostgresError.statementClosed
+        } else {
+            return try await bind().execute()
+        }
+    }
+    
+    /// Executes a query from the prepared statement with zero bound parameters.
+    /// - Returns: a `ResultCursor` to access the data.
+    public func query() async throws -> ResultCursor {
+        try await bind().query()
+    }
+    
+    var closed: Bool {
+        get async {
+            return await connection.statementClosed(name)
+        }
+    }
+    
     func close() async throws {
+        if await closed {
+            return
+        }
         try await connection.closeStatement(name: name)
     }
 }

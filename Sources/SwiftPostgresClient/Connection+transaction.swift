@@ -17,8 +17,21 @@
 //  limitations under the License.
 //
 
+/// Transaction convenience methods
 extension Connection {
     
+    public func beginTransaction() async throws {
+        try await execute("BEGIN;")
+    }
+    
+    public func commitTransaction() async throws {
+        try await execute("COMMIT;")
+    }
+    
+    func rollback() async throws {
+        try await execute("ROLLBACK;")
+    }
+
     /// Runs a block within a transaction. Commits on success, rolls back on error.
     func withTransaction<T>(_ operation: @Sendable () async throws -> T) async throws -> T where T: Sendable {
         try await beginTransaction()
@@ -34,27 +47,5 @@ extension Connection {
             }
             throw error
         }
-    }
-    
-    public func beginTransaction() async throws {
-        try await executeSimpleQuery("BEGIN;")
-    }
-    
-    public func commitTransaction() async throws {
-        try await executeSimpleQuery("COMMIT;")
-    }
-    
-    func rollback() async throws {
-        try await executeSimpleQuery("ROLLBACK;")
-    }
-    
-    func executeSimpleQuery(_ sql: String) async throws {
-        let queryRequest = QueryRequest(query: sql)
-        try await sendRequest(queryRequest)
-        try await receiveResponse(type: CommandCompleteResponse.self)
-        try await receiveResponse(type: ReadyForQueryResponse.self)
-#if DEBUG
-        print("Transaction status: \(transactionStatus)")
-#endif
     }
 }
