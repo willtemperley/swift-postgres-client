@@ -151,7 +151,6 @@ public actor Connection {
         }
     }
     
-    
     private func emitNotification(_ notification: ServerMessage) {
         notificationContinuation.yield(notification)
     }

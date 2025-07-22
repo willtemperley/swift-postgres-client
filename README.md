@@ -13,16 +13,16 @@ This project has been adapted from PostgresClientKit, with the following changes
 - Designed to be fully asynchronous, using Swift 5.5 structured concurrency.
 - The network backend now uses Apple’s Network Framework, removing Kitura BlueSocket and BlueSSLService dependencies which are no longer supported. 
 - Channel binding support has been enabled, significantly reducing chances of man-in-the-middle attacks. 
-- Non-TLS connection support has been removed in favour of the  [second alternate method] (https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-SSL) of connecting. This relies on Application-Layer Protocol Negotiation (ALPN) managed by Apple's Network framework, to directly negotiate a secure (TLS) connection without first sending a plain-text SSLRequest. This reduces connection latency and mitigates exposure to [CVE-2024-10977](https://www.postgresql.org/support/security/CVE-2024-10977/) and [CVE-2021-23222](https://www.postgresql.org/support/security/CVE-2021-23222/).
+- Non-TLS connection support has been removed in favour of the  [second alternate method](https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-SSL) of connecting. This relies on Application-Layer Protocol Negotiation (ALPN) managed by Apple's Network framework, to directly negotiate a secure (TLS) connection without first sending a plain-text SSLRequest. This reduces connection latency and mitigates exposure to [CVE-2024-10977](https://www.postgresql.org/support/security/CVE-2024-10977/) and [CVE-2021-23222](https://www.postgresql.org/support/security/CVE-2021-23222/).
 - All requests and responses are now sendable structs instead of classes.
 - When using extended query mode, queries execute on named portals instead of the default portal.
 - Tests have been migrated from XCTest to Swift Testing.
 
 ## Features
 
-- **Doesn't require libpq.**  SwiftPostgresClient implements the Postgres network protocol in Swift, so it does not require `libpq`.
+- **Fully concurrent, asynchronous API.**  Queries can execute off the main thread, essential in modern frameworks like SwiftUI. Query results are exposed as `AsyncSequence`s and server notifications can be subscribed to via an `AsyncStream`. 
 
-- **Fully concurrent, asynchronous API.**  Query results are exposed as `AsyncSequence`s. Connections are stateful and modeled as actors, allowing protocol-level messages to be received concurrently on one task while results are processed by client code on another.  This design ensures high performance and thread safety without explicit locking.
+- **Doesn't require libpq.**  SwiftPostgresClient implements the Postgres network protocol in Swift, so it does not require `libpq`.
 
 - **Safe conversion between Postgres and Swift types.** Type conversion is explicit and robust.  Conversion errors are signaled, not masked. These were adapted from PostgresClientKit, providing additional Swift types for dates and times to address the impedance mismatch between Postgres types and Foundation `Date`.
 
