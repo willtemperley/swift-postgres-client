@@ -24,58 +24,6 @@ public struct BasicConnectionTests {
     
     let configurations = TestConfigurations()
     
-    func readmeExample() async throws {
-        
-        let connection = try await Connection.connect(host: "localhost")
-
-        let credential: Credential = .scramSHA256(password: "welcome1", channelBindingPolicy: .required)
-
-        try await connection.authenticate(user: "bob", database: "postgres", credential: credential)
-
-        let text = "SELECT city, temp_lo, temp_hi, prcp, date FROM weather WHERE city = $1;"
-        let statement = try await connection.prepareStatement(text: text)
-        let portal = try await statement.bind(parameterValues: ["San Francisco"])
-
-        let cursor = try await portal.query()
-
-        for try await row in cursor {
-          let columns = row.columns
-          let city = try columns[0].string()
-          let tempLo = try columns[1].int()
-          let tempHi = try columns[2].int()
-          let prcp = try columns[3].optionalDouble()
-          let date = try columns[4].date()
-           print("""
-            \(city) on \(date): low: \(tempLo), high: \(tempHi), \
-            precipitation: \(String(describing: prcp))
-           """)
-        }
-
-        let rowCount = await cursor.rowCount
-        print("Total rows: \(String(describing: rowCount))")
-    }
-    
-//    @Test
-    func dropTestSchemata() async throws {
-        
-        let config = configurations.terryConnectionConfiguration
-        let connection = try await Connection.connect(host: config.host)
-        
-        try await connection.authenticate(user: config.user, database: config.database, credential: config.credential)
-        
-        
-        let cursor = try await connection.prepareStatement(text: """
-                                              select schema_name from information_schema.schemata 
-                                              where schema_name like 'test_%';
-                                              """).bind().query()
-        
-        let values = try await cursor.reduce(into: []) { $0.append(try $1.columns[0].string()) }
-
-        for value in values {
-            try await connection.execute("drop schema \(value) cascade")
-        }
-    }
-
     @Test func basicQuery() async throws {
         
         try await withWeatherTable(config: configurations.sallyConnectionConfiguration) { connection in

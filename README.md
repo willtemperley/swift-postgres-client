@@ -46,13 +46,13 @@ try await connection.authenticate(user: "bob", database: "postgres", credential:
 
 // Prepare a statement
 let text = "SELECT city, temp_lo, temp_hi, prcp, date FROM weather WHERE city = $1;"
-let statement = try await connection.prepareStatement(query: text)
+let statement = try await connection.prepareStatement(text: text)
 
 // Bind the statement within a named portal.
 let portal = try await statement.bind(parameterValues: ["San Francisco"])
 
 // Obtain an AsyncSequence from the portal and iterate the results.
-let cursor = try await portal.execute()
+let cursor = try await portal.query()
 
 for try await row in cursor {
   let columns = row.columns
