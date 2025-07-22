@@ -20,7 +20,6 @@
 @testable import SwiftPostgresClient
 import Testing
 
-// TODO: Parallel test failure (individual OK)
 public struct BasicConnectionTests {
     
     let configurations = TestConfigurations()

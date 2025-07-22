@@ -1,16 +1,5 @@
 # Troubleshooting
 
-## Enabling PostgresClientKit logging
-
-PostgresClientKit logs internal events of interest.  To change the log verbosity, set the log level of the `Postgres.logger` in your Swift code.  For example:
-
-```
-Postgres.logger.level = .all
-```
-
-By default, the log is written to `stdout`.  Change this by setting the log handler of the `Postgres.logger`.  For details, see the API documentation for the `LogHandler` protocol.
-
-
 ## Receiving log messages from the Postgres server
 
 In troubleshooting, it can also be useful for your Swift application to receive log messages from the Postgres server.  Enable this by setting the Postgres configuration parameter named [`client_min_messages`](https://www.postgresql.org/docs/11/runtime-config-client.html#GUC-CLIENT-MIN-MESSAGES) (for example, in the [`postgresql.conf`](https://www.postgresql.org/docs/11/config-setting.html#CONFIG-SETTING-CONFIGURATION-FILE) file for your Postgres server).  For example:
@@ -28,7 +17,7 @@ Then, do one or both of the following:
 
 ## Errors in creating a connection
 
-Confirm you can connect using [`psql`](https://www.postgresql.org/docs/11/app-psql.html), explicitly specifying the host, port, database, and username.  For example:
+Confirm you can connect using [`psql`](https://www.postgresql.org/docs/current/app-psql.html), explicitly specifying the host, port, database, and username.  For example:
 
 ```
 psql --host 127.0.0.1 --port 5432 --dbname example --username bob
@@ -37,16 +26,15 @@ psql --host 127.0.0.1 --port 5432 --dbname example --username bob
 
 ## Can't create an SSL/TLS connection
 
-In the [`postgresql.conf`](https://www.postgresql.org/docs/11/config-setting.html#CONFIG-SETTING-CONFIGURATION-FILE) file for your Postgres server, confirm that:
+In the [`postgresql.conf`](https://www.postgresql.org/docs/current/config-setting.html#CONFIG-SETTING-CONFIGURATION-FILE) file for your Postgres server, confirm that:
 
 ```
 ssl = on
 ```
 
-
 ## Authentication issues
 
-Review the [`pg_hba.conf`](https://www.postgresql.org/docs/11/auth-pg-hba-conf.html) file for your Postgres server.  PostgresClientKit supports the `trust`, `password`, `md5`, and `scram-sha-256` options for `auth-method`.
+Review the [`pg_hba.conf`](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html) file for your Postgres server.  PostgresClientKit supports the `trust`, `password`, `md5`, and `scram-sha-256` options for `auth-method`.
 
 
 ## Cursor is unexpectedly closed

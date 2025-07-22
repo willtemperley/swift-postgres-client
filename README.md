@@ -103,6 +103,10 @@ swift package clean
 swift build
 ```
 
+## Testing
+
+[Set up a Postgres database for testing](https://github.com/willtemperley/swift-postgres-client/blob/main/Docs/setting_up_a_postgres_database_for_testing.md).  This is a one-time process.
+
 ## Additional examples
 
 
