@@ -25,7 +25,7 @@ import Foundation
 /// 
 /// https://www.postgresql.org/docs/current/protocol-overview.html
 ///
-public struct Portal {
+public struct Portal: Sendable {
     
     let name: String
     let metadata: [ColumnMetadata]?
