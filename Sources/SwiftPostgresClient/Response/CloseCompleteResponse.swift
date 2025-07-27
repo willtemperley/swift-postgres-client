@@ -33,5 +33,3 @@ struct CloseCompleteResponse: Response {
         "CloseCompleteResponse"
     }
 }
-
-// EOF

@@ -135,5 +135,3 @@ public struct Notice: Sendable {
         return s
     }
 }
-
-// EOF

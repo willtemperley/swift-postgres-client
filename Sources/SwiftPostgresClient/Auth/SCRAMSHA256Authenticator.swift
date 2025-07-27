@@ -358,5 +358,3 @@ class SCRAMSHA256Authenticator {
         return data
     }
 }
-
-// EOF

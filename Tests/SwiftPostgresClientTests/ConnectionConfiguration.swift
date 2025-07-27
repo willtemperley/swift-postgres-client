@@ -50,5 +50,3 @@ public struct ConnectionConfiguration {
     public var applicationName = "PostgresClientKit"
     
 }
-
-// EOF

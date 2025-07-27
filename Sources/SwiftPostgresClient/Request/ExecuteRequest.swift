@@ -30,10 +30,6 @@ struct ExecuteRequest: Request {
         self.portalName = portalName
     }
     
-    //
-    // MARK: Request
-    //
-    
     var requestType: Character? {
         return "E"
     }
@@ -43,5 +39,4 @@ struct ExecuteRequest: Request {
         body.append(UInt32(0).data) // no row limit
         return body
     }
-    
 }

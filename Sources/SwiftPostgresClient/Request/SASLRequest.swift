@@ -36,5 +36,3 @@ struct SASLRequest: Request {
     }
     
 }
-
-// EOF

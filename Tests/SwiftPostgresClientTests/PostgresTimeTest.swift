@@ -165,5 +165,3 @@ struct PostgresTimeTest {
         checkTime(PostgresTime(expectedDescription)!)
     }
 }
-
-// EOF

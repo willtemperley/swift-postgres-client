@@ -448,5 +448,3 @@ struct RowDecoder: Sendable {
         }
     }
 }
-
-// EOF

@@ -103,5 +103,3 @@ public struct PostgresByteA:
         return "PostgresByteA(count=\(data.count))"
     }
 }
-
-// EOF

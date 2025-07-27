@@ -45,5 +45,3 @@ struct NotificationResponse: Response {
         ")"
     }
 }
-
-// EOF

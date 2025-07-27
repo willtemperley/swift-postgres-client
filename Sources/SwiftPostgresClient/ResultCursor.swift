@@ -131,8 +131,6 @@ public struct ResultCursor: AsyncSequence, Sendable {
                 case let command as CommandCompleteResponse:
                     
                     let commandStatus = command.status
-                    
-                    // TODO: consider handling this upstream - it's known in the message queue
                     try await connection.setCommandStatus(to: commandStatus)
                     if extendedProtocol, !commandComplete {
                         try await connection.cleanupPortal(name: portalName)

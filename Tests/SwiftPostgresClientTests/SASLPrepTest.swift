@@ -120,5 +120,3 @@ struct SASLPrepTest {
                 string: "\u{0627}\u{0031}"))
     }
 }
-
-// EOF

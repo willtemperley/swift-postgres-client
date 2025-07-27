@@ -38,5 +38,3 @@ struct BackendKeyDataResponse: Response {
         return "BackendKeyDataResponse(processID: \(processID), secretKey: <masked>)"
     }
 }
-
-// EOF

@@ -988,5 +988,3 @@ fileprivate extension Unicode.Scalar {
         return ranges.contains { $0.contains(value) }
     }
 }
-
-// EOF

@@ -29,7 +29,7 @@ struct DescribePortalRequest: Request {
     
     var body: Data {
         var body = "P".data         // for "portal"
-        body.append(name.dataZero)    // the unnamed portal
+        body.append(name.dataZero)
         return body
     }
 }

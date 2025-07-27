@@ -48,5 +48,3 @@ struct SCRAMSHA256AuthenticatorTest {
         try authenticator.processServerFinalMessage(serverFinalMessage)
     }
 }
-
-// EOF

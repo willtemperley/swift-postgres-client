@@ -222,5 +222,3 @@ public struct ConnectionPoolMetrics: CustomStringConvertible {
         return String(format: "%5.1f", locale: ConnectionPoolMetrics.enUsLocale, double)
     }
 }
-
-// EOF

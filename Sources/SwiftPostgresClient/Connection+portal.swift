@@ -33,10 +33,7 @@ extension Connection {
         
         let portalName = UUID().uuidString
         let bindRequest = BindRequest(name: portalName, statement: statement, parameterValues: parameterValues)
-        try await sendRequest(bindRequest)
-        
-        let flushRequest = FlushRequest()
-        try await sendRequest(flushRequest)
+        try await sendRequest(bindRequest, flush: true)
         
         try await receiveResponse(type: BindCompleteResponse.self)
         
@@ -57,10 +54,7 @@ extension Connection {
         state = .querySent
         
         let executeRequest = ExecuteRequest(portalName: portalName, statement: statement)
-        try await sendRequest(executeRequest)
-        
-        let flushRequest = FlushRequest()
-        try await sendRequest(flushRequest)
+        try await sendRequest(executeRequest, flush: true)
         
         // The first response of the query is evaluated eagerly to check its type.
         let response = await receiveResponse()
@@ -81,9 +75,7 @@ extension Connection {
         state = .querySent
         
         let executeRequest = ExecuteRequest(portalName: portalName, statement: statement)
-        try await sendRequest(executeRequest)
-        let flushRequest = FlushRequest()
-        try await sendRequest(flushRequest)
+        try await sendRequest(executeRequest, flush: true)
 
         let response = try await receiveResponse(type: CommandCompleteResponse.self)
         try await cleanupPortal(name: portalName)
@@ -92,12 +84,11 @@ extension Connection {
     
     func cleanupPortal(name: String) async throws {
         // Close the portal
-        try await sendRequest(ClosePortalRequest(name: name))
-        try await sendRequest(FlushRequest())
+        try await sendRequest(ClosePortalRequest(name: name), flush: true)
         try await receiveResponse(type: CloseCompleteResponse.self)
         
         // Finalize the transaction (unless already in BEGIN/COMMIT)
-        try await sendRequest(SyncRequest())
+        try await sendRequest(SyncRequest(), flush: true)
         
         // transaction status always set on ReadyForQueryResponse
         try await receiveResponse(type: ReadyForQueryResponse.self)

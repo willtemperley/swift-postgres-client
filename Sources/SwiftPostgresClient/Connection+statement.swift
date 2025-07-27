@@ -36,10 +36,7 @@ extension Connection {
         
         let statement = Statement(text: text)
         let parseRequest = ParseRequest(statement: statement)
-        try await sendRequest(parseRequest)
-        
-        let flushRequest = FlushRequest()
-        try await sendRequest(flushRequest)
+        try await sendRequest(parseRequest, flush: true)
         
         try await receiveResponse(type: ParseCompleteResponse.self)
         
@@ -51,10 +48,7 @@ extension Connection {
     func closeStatement(name: String) async throws {
         
         let closeStatementRequest = CloseStatementRequest(name: name)
-        try await sendRequest(closeStatementRequest)
-        
-        let flushRequest = FlushRequest()
-        try await sendRequest(flushRequest)
+        try await sendRequest(closeStatementRequest, flush: true)
         
         try await receiveResponse(type: CloseCompleteResponse.self)
         self.openStatements.remove(name)
@@ -66,10 +60,7 @@ extension Connection {
         var columns: [ColumnMetadata]? = nil
         
         let describePortalRequest = DescribePortalRequest(name: portalName)
-        try await sendRequest(describePortalRequest)
-        
-        let flushRequest = FlushRequest()
-        try  await sendRequest(flushRequest)
+        try await sendRequest(describePortalRequest, flush: true)
         
         let response = await receiveResponse()
         

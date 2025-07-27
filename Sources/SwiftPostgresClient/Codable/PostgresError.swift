@@ -102,5 +102,3 @@ public enum PostgresError: Error {
     /// The value is `nil`.
     case valueIsNil
 }
-
-// EOF

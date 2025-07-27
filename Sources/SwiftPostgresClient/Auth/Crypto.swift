@@ -461,5 +461,3 @@ internal struct Crypto {
         return Data(Hi)
     }
 }
-
-// EOF

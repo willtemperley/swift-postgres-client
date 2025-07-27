@@ -68,5 +68,3 @@ public struct ConnectionPoolConfiguration {
     /// Defaults to `true`.
     public var metricsResetWhenLogged = true
 }
-
-// EOF

@@ -48,6 +48,7 @@ public actor Connection {
     
     public let notifications: AsyncStream<ServerMessage>
     private let notificationContinuation: AsyncStream<ServerMessage>.Continuation
+    private let flushBytes: [UInt8] = [0x48, 0x00, 0x00, 0x00, 0x04]
     
     private init(socket: NetworkConnection, certificateHash: Data) {
         self.socket = socket
@@ -164,7 +165,7 @@ public actor Connection {
         while true {
             let message = await receiveResponse()
             
-            // TODO: non-command messages should be published as another async stream
+            // Publish server notices and parameter changes to the notifications AsyncStream
             switch message {
             case let notification as NotificationResponse:
                 emitNotification(.notification(pid: Int32(notification.processId), channel: notification.channel, payload: notification.payload))
@@ -235,9 +236,12 @@ public actor Connection {
         handleIncoming(response)
     }
     
-    func sendRequest(_ request: Request) async throws {
-        // TODO: consider serializing multiple requests to the server - it's common that a command will be followed by a flush
-        try await socket.write(from: request.data())
+    func sendRequest(_ request: Request, flush: Bool = false) async throws {
+        var data = request.data()
+        if flush {
+            data.append(contentsOf: flushBytes)
+        }
+        try await socket.write(from: data)
     }
     
     func recoverIfNeeded() async throws {
@@ -248,8 +252,7 @@ public actor Connection {
         case .querySent, .awaitingQueryResult, .errorRecieved:
             logWarning("State is \(state), emptying message queue and sending sync request.")
             
-            try await sendRequest(SyncRequest())
-            try await sendRequest(FlushRequest())
+            try await sendRequest(SyncRequest(), flush: true)
             
             // Cleanup all open portals
 //            for name in try await listOpenPortals() {

@@ -50,5 +50,3 @@ public struct ColumnMetadata: Sendable {
     /// - SeeAlso: [pg_attribute.atttypmod](https://www.postgresql.org/docs/12/catalog-pg-attribute.html)
     public let dataTypeModifier: UInt32
 }
-
-// EOF

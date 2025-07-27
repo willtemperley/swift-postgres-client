@@ -218,5 +218,3 @@ public struct Row: CustomStringConvertible {
         return "Row(columns: \(columns))"
     }
 }
-
-// EOF

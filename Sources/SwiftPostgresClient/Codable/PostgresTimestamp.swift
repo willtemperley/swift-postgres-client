@@ -230,5 +230,3 @@ public extension Date {
         return PostgresTimestamp(date: self, in: timeZone)
     }
 }
-
-// EOF

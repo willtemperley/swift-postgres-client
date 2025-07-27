@@ -511,5 +511,3 @@ extension Optional: PostgresValueConvertible where Wrapped: PostgresValueConvert
         }
     }
 }
-
-// EOF

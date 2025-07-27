@@ -38,5 +38,3 @@ public protocol PostgresValueConvertible: Sendable {
     /// A `PostgresValue` for this instance.
     var postgresValue: PostgresValue { get }
 }
-
-// EOF
