@@ -100,10 +100,6 @@ let connection = try await Connection.connect(
     useTLS: false
 )
 ```
-<<<<<<< HEAD
-=======
-```
->>>>>>> bfd19d0eef3fe2d04acdbefb71b4147a52a06013
 
 ## Prerequisites
 
