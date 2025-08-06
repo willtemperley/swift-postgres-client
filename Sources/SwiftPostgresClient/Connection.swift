@@ -71,13 +71,15 @@ public actor Connection {
     /// - Parameters:
     ///   - host: The host
     ///   - port: The port
+    ///   - useTLS: Whether to use TLS (default: true)
     /// - Returns: A connection ready for authentication.
     public static func connect(
         host: String,
-        port: Int = 5432
+        port: Int = 5432,
+        useTLS: Bool = true
     ) async throws -> Connection {
         
-        let (nwConnection, certificateHash) = try await createPostgresConnection(host: host, port: UInt16(port))
+        let (nwConnection, certificateHash) = try await createPostgresConnection(host: host, port: UInt16(port), useTLS: useTLS)
         
         let socket = NetworkConnection(connection: nwConnection)
         
@@ -286,50 +288,60 @@ public actor Connection {
 /// - Parameters:
 ///   - host: The host
 ///   - port: The port
+///   - useTLS: Whether to use TLS (default: true)
 /// - Returns:connection in ready state and the server certificate hash.
-fileprivate func createPostgresConnection(host: String, port: UInt16) async throws -> (NWConnection, Data) {
-    let tlsOptions = NWProtocolTLS.Options()
-    let secProtocolOptions = tlsOptions.securityProtocolOptions
+fileprivate func createPostgresConnection(host: String, port: UInt16, useTLS: Bool = true) async throws -> (NWConnection, Data) {
     
-    "postgresql".withCString {
-        sec_protocol_options_add_tls_application_protocol(secProtocolOptions, $0)
-    }
-    
+    let parameters: NWParameters
     var certHash: Data? = nil
     
-    sec_protocol_options_set_verify_block(
-        secProtocolOptions,
-        { metadata, trustRef, verifyComplete in
-            let trust = sec_trust_copy_ref(trustRef).takeRetainedValue()
-            let isLocalhost = ["localhost", "127.0.0.1", "::1"].contains(host)
-            
-            func complete(with cert: SecCertificate?) {
-                guard let cert = cert else {
-                    verifyComplete(false)
-                    return
+    if useTLS {
+        let tlsOptions = NWProtocolTLS.Options()
+        let secProtocolOptions = tlsOptions.securityProtocolOptions
+        
+        "postgresql".withCString {
+            sec_protocol_options_add_tls_application_protocol(secProtocolOptions, $0)
+        }
+        
+        sec_protocol_options_set_verify_block(
+            secProtocolOptions,
+            { metadata, trustRef, verifyComplete in
+                let trust = sec_trust_copy_ref(trustRef).takeRetainedValue()
+                let isLocalhost = ["localhost", "127.0.0.1", "::1"].contains(host)
+                
+                func complete(with cert: SecCertificate?) {
+                    guard let cert = cert else {
+                        verifyComplete(false)
+                        return
+                    }
+                    
+                    let data = SecCertificateCopyData(cert) as Data
+                    let hash = SHA256.hash(data: data)
+                    certHash = Data(hash)
+                    verifyComplete(true)
                 }
                 
-                let data = SecCertificateCopyData(cert) as Data
-                let hash = SHA256.hash(data: data)
-                certHash = Data(hash)
-                verifyComplete(true)
-            }
-            
-            if isLocalhost {
-                complete(with: SecTrustGetCertificateAtIndex(trust, 0))
-            } else {
-                var error: CFError?
-                if SecTrustEvaluateWithError(trust, &error) {
+                if isLocalhost {
                     complete(with: SecTrustGetCertificateAtIndex(trust, 0))
                 } else {
-                    verifyComplete(false)
+                    var error: CFError?
+                    if SecTrustEvaluateWithError(trust, &error) {
+                        complete(with: SecTrustGetCertificateAtIndex(trust, 0))
+                    } else {
+                        verifyComplete(false)
+                    }
                 }
-            }
-        },
-        DispatchQueue.global(qos: .utility)
-    )
+            },
+            DispatchQueue.global(qos: .utility)
+        )
+        
+        parameters = NWParameters(tls: tlsOptions)
+    } else {
+        // Plain TCP connection
+        parameters = NWParameters.tcp
+        certHash = Data() // Empty certificate hash for plain connections
+    }
     
-    let parameters = NWParameters(tls: tlsOptions)
     let connection = NWConnection(host: .init(host), port: .init(rawValue: port)!, using: parameters)
     
     try await withCheckedThrowingContinuation { cont in
