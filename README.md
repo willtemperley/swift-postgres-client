@@ -88,6 +88,23 @@ The channel binding policy can be configured as either:
 
 ⚠️ When using `.preferred` mode, if the connection proceeds with plain SCRAM-SHA-256 (without -PLUS), it's important to verify that the server genuinely does not support SCRAM-SHA-256-PLUS. Otherwise, a protocol downgrade attack may be possible, where an attacker strips the -PLUS mechanism to force weaker authentication.
 
+## Proxy Environment Support
+
+For database proxy environments like StrongDM, pgBouncer, or other connection poolers that handle TLS termination:
+
+```swift
+// Connect through a proxy without TLS
+let connection = try await Connection.connect(
+    host: "proxy.example.com", 
+    port: 5432, 
+    useTLS: false
+)
+```
+<<<<<<< HEAD
+=======
+```
+>>>>>>> bfd19d0eef3fe2d04acdbefb71b4147a52a06013
+
 ## Prerequisites
 
 - **Swift 5.5 or later**  (PostgresClientKit uses Swift 5.5 structured concurrency)
