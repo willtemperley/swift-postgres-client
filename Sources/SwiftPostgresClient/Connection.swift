@@ -347,9 +347,14 @@ fileprivate func createPostgresConnection(host: String, port: UInt16, useTLS: Bo
     try await withCheckedThrowingContinuation { cont in
         connection.stateUpdateHandler = { state in
             switch state {
-            case .ready: cont.resume(returning: ())
-            case .failed(let error): cont.resume(throwing: error)
-            default: break
+            case .ready:
+                cont.resume(returning: ())
+            case .failed(let error):
+                cont.resume(throwing: error)
+            case .waiting(let reason):
+                cont.resume(throwing: reason)
+            default:
+                break
             }
         }
         

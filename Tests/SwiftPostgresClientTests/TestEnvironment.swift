@@ -27,11 +27,16 @@ import Testing
 /// Edit the properties' default values to reflect your environment.
 struct TestEnvironment {
     
+    init(postgresPort: Int = 5432, useTLS: Bool = true) {
+        self.postgresPort = postgresPort
+        self.useTLS = useTLS
+    }
+    
     /// The hostname or IP address of the Postgres server.
     let postgresHost = "127.0.0.1"
     
     /// The port number of the Postgres server.
-    let postgresPort = 5432
+    let postgresPort: Int
     
     /// The name of the database on the Postgres server.
     let postgresDatabase = "postgresclientkittest"
@@ -60,8 +65,7 @@ struct TestEnvironment {
     /// The password of the Postgres user identified by `sallyUsername`.
     let sallyPassword = "welcome1"
     
-    /// The current test environment.
-    static let current = TestEnvironment()
+    let useTLS: Bool
 }
 
 struct TestUtils {
@@ -126,7 +130,7 @@ func withIsolatedSchema(
     config: ConnectionConfiguration,
     perform: @Sendable (_ conn: Connection) async throws -> Void
 ) async throws {
-    var conn = try await Connection.connect(host: config.host, port: config.port)
+    var conn = try await Connection.connect(host: config.host, port: config.port, useTLS: config.useTLS)
     try await conn.authenticate(user: config.user, database: config.database, credential: config.credential)
 
     let schema = "test_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
@@ -143,7 +147,7 @@ func withIsolatedSchema(
     
     if await conn.closed {
         // Recreate connection to clean up.
-        conn = try await Connection.connect(host: config.host, port: config.port)
+        conn = try await Connection.connect(host: config.host, port: config.port, useTLS: config.useTLS)
         try await conn.authenticate(user: config.user, database: config.database, credential: config.credential)
     }
 

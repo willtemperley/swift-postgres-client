@@ -19,18 +19,23 @@
 
 struct TestConfigurations {
     
+    let environment: TestEnvironment
+    
+    init(environment: TestEnvironment = .init()) {
+        self.environment = environment
+    }
+    
     /// A `ConnectionConfiguration` for Terry, authenticating by `Credential.trust`.
     var terryConnectionConfiguration: ConnectionConfiguration {
-        
-        let environment = TestEnvironment.current
         
         var configuration = ConnectionConfiguration()
         configuration.host = environment.postgresHost
         configuration.port = environment.postgresPort
         configuration.database = environment.postgresDatabase
         configuration.user = environment.terryUsername
+        configuration.useTLS = environment.useTLS
         configuration.credential = .trust
-        
+
         return configuration
     }
     
@@ -38,45 +43,42 @@ struct TestConfigurations {
     /// `Credential.cleartextPassword`.
     var charlieConnectionConfiguration:  ConnectionConfiguration {
         
-        let environment = TestEnvironment.current
-        
         var configuration = ConnectionConfiguration()
         configuration.host = environment.postgresHost
         configuration.port = environment.postgresPort
         configuration.database = environment.postgresDatabase
         configuration.user = environment.charlieUsername
+        configuration.useTLS = environment.useTLS
         configuration.credential = .cleartextPassword(password: environment.charliePassword)
-        
+
         return configuration
     }
     
     /// A `ConnectionConfiguration` for Mary, authenticating by `Credential.md5Password`.
     var maryConnectionConfiguration: ConnectionConfiguration {
         
-        let environment = TestEnvironment.current
-        
         var configuration = ConnectionConfiguration()
         configuration.host = environment.postgresHost
         configuration.port = environment.postgresPort
         configuration.database = environment.postgresDatabase
         configuration.user = environment.maryUsername
+        configuration.useTLS = environment.useTLS
         configuration.credential = .md5Password(password: environment.maryPassword)
-        
+
         return configuration
     }
     
     /// A `ConnectionConfiguration` for Sally, authenticating by `Credential.scramSHA256`.
     var sallyConnectionConfiguration: ConnectionConfiguration {
         
-        let environment = TestEnvironment.current
-        
         var configuration = ConnectionConfiguration()
         configuration.host = environment.postgresHost
         configuration.port = environment.postgresPort
         configuration.database = environment.postgresDatabase
         configuration.user = environment.sallyUsername
+        configuration.useTLS = environment.useTLS
         configuration.credential = .scramSHA256(password: environment.sallyPassword, channelBindingPolicy: .preferred)
-        
+
         return configuration
     }
 }

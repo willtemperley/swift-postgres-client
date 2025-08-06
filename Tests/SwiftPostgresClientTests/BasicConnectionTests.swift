@@ -19,12 +19,45 @@
 
 @testable import SwiftPostgresClient
 import Testing
+import Network
 
 public struct BasicConnectionTests {
     
-    let configurations = TestConfigurations()
+    static let environments: [TestEnvironment] = [
+        .init(postgresPort: 5432, useTLS: false),
+        .init(postgresPort: 5432, useTLS: true),
+        .init(postgresPort: 5433, useTLS: false)
+    ]
     
-    @Test func basicQuery() async throws {
+    static let invalidEnvironments: [TestEnvironment] = [
+        .init(postgresPort: 5433, useTLS: true), // Connect using TLS to a server configured without SSL
+        .init(postgresPort: 5434, useTLS: true)  // Not running at all
+    ]
+    
+    @Test("Clean-fail invalid connections", arguments: invalidEnvironments) func cleanFail(environment: TestEnvironment) async throws {
+        
+        let configurations = TestConfigurations(environment: environment)
+        let config = configurations.sallyConnectionConfiguration
+        
+        let error = await #expect(throws: NWError.self) {
+            _ = try await Connection.connect(host: config.host, port: config.port, useTLS: config.useTLS)
+        }
+        
+        switch environment.postgresPort {
+        case 5433:
+            // This happens when attempting to connect to a non-SSL server using TLS
+            #expect(error?.errorCode == -9816)
+        case 5434:
+            // Connection refused; the server isn't running.
+            #expect(error?.errorCode == 61)
+        default:
+            break;
+        }
+    }
+    
+    @Test("Query weather table", arguments: environments) func basicQuery(environment: TestEnvironment) async throws {
+        
+        let configurations = TestConfigurations(environment: environment)
         
         try await withWeatherTable(config: configurations.sallyConnectionConfiguration) { connection in
             
@@ -73,7 +106,9 @@ public struct BasicConnectionTests {
         }
     }
     
-    @Test func transactionRollback() async throws {
+    @Test("Rollback test", arguments: environments) func transactionRollback(environment: TestEnvironment) async throws {
+        
+        let configurations = TestConfigurations(environment: environment)
         
         let config = configurations.sallyConnectionConfiguration
         let connection = try await Connection.connect(host: config.host)

@@ -49,4 +49,6 @@ public struct ConnectionConfiguration {
     /// displayed by pgAdmin.  Defaults to `PostgresClientKit`.
     public var applicationName = "PostgresClientKit"
     
+    /// Should the connection proceeed with TLS
+    public var useTLS: Bool = true
 }

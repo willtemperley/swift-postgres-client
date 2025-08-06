@@ -5,9 +5,12 @@ The tests were adapted from [PostgresClientKit](https://github.com/codewinsdotco
 
 After [installing Postgres](https://www.postgresql.org/download/), follow the steps below to configure Postgres and set up a test database and users.
 
+Two servers need to be available - one running on 5432 with ssl = on, and one running on 5433 with ssl = off (the default).
+Alternatively just comment out the environments in `BasicConnectionTests` that use the server running on 5433.
+
 ## Configure Postgres
 
-In `postgresql.conf`, ensure:
+In `postgresql.conf`, for the server running on 5432, ensure:
 
     ssl = on
     password_encryption = scram-sha-256
