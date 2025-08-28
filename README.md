@@ -1,28 +1,23 @@
 # SwiftPostgresClient
 
 <p>
-
   <img src="https://img.shields.io/badge/swift-6-green.svg">
   <img src="https://img.shields.io/badge/os-macOS-green.svg">
   <img src="https://img.shields.io/badge/os-iOS-green.svg">  
-  
 </p>
 
 This project has been adapted from PostgresClientKit, with the following changes:
 
-- Designed to be fully asynchronous, using Swift 5.5 structured concurrency.
-- The network backend now uses Apple’s Network Framework, removing Kitura BlueSocket and BlueSSLService dependencies which are no longer supported. 
-- Channel binding support has been enabled, significantly reducing chances of man-in-the-middle attacks. 
-- Non-TLS connection support has been removed in favour of the  [second alternate method](https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-SSL) of connecting. This relies on Application-Layer Protocol Negotiation (ALPN) managed by Apple's Network framework, to directly negotiate a secure (TLS) connection without first sending a plain-text SSLRequest. This reduces connection latency and mitigates exposure to [CVE-2024-10977](https://www.postgresql.org/support/security/CVE-2024-10977/) and [CVE-2021-23222](https://www.postgresql.org/support/security/CVE-2021-23222/).
-- All requests and responses are now sendable structs instead of classes.
-- When using extended query mode, queries execute on named portals instead of the default portal.
-- Tests have been migrated from XCTest to Swift Testing.
+- A fully asynchronous API, suitable for use in SwiftUI.
+- The network backend now uses Apple’s Network Framework
+- Channel binding support has been enabled.
+- Uses Application-Layer Protocol Negotiation (ALPN) instead of plain-text SSL upgrade requests.
 
 ## Features
 
 - **Fully concurrent, asynchronous API.**  Queries can execute off the main thread, essential in modern frameworks like SwiftUI. Query results are exposed as `AsyncSequence`s and server notifications can be subscribed to via an `AsyncStream`. 
 
-- **Doesn't require libpq.**  SwiftPostgresClient implements the Postgres network protocol in Swift, so it does not require `libpq`.
+- **Pure Swift with zero dependencies.**  SwiftPostgresClient implements the Postgres network protocol in Swift, so it does not require `libpq`.
 
 - **Safe conversion between Postgres and Swift types.** Type conversion is explicit and robust.  Conversion errors are signaled, not masked. These were adapted from PostgresClientKit, providing additional Swift types for dates and times to address the impedance mismatch between Postgres types and Foundation `Date`.
 
@@ -88,14 +83,13 @@ The channel binding policy can be configured as either:
 
 ⚠️ When using `.preferred` mode, if the connection proceeds with plain SCRAM-SHA-256 (without -PLUS), it's important to verify that the server genuinely does not support SCRAM-SHA-256-PLUS. Otherwise, a protocol downgrade attack may be possible, where an attacker strips the -PLUS mechanism to force weaker authentication.
 
-## Proxy Environment Support
+## Non-TLS connections
 
-For database proxy environments like StrongDM, pgBouncer, or other connection poolers that handle TLS termination:
+The default mode of connection is via TLS, however this can be bypassed if necessary, for example when running a proxy that handles TLS termination.
 
 ```swift
-// Connect through a proxy without TLS
 let connection = try await Connection.connect(
-    host: "proxy.example.com", 
+    host: "localhost", 
     port: 5432, 
     useTLS: false
 )
@@ -122,6 +116,20 @@ swift build
 
 ## Additional examples
 
+Retrieving Well-Known-Binary (WKB) from PostGIS:
+
+```swift
+    // Use direct query mode to retrieve data as bytea
+    let cursor = try await connection.query("SELECT ST_AsBinary(ST_GeomFromText('LINESTRING(0 0, 10 10)'))")
+    for try await row in cursor {
+      let geomCol = try row.columns[0].byteA()
+      let data: Data = geomCol.data
+      // Parse the Well-Known-Binary (WKB)
+    }
+```
+
+Note that currently all server output is received in text format. This particular use-case might benefit from requesting binary output at the bind stage when using [extended query mode](https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY).
+This has not however been implemented yet. A future version may just make binary output the default, and perform all response parsing with the swift-binary-parsing library, however that comes with the tradeoff that it would be difficult to support direct and extended query mode.
 
 ## License
 

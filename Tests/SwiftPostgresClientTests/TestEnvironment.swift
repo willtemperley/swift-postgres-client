@@ -70,40 +70,6 @@ struct TestEnvironment {
 
 struct TestUtils {
     
-    // This just ensures the README example compiles
-    func readmeExample() async throws {
-        
-        // Connect on the default port, returning a connection actor
-        let connection = try await Connection.connect(host: "localhost")
-
-        // Connect using TLS and SCRAM, enforcing channel binding
-        let credential: Credential = .scramSHA256(password: "welcome1", channelBindingPolicy: .required)
-        try await connection.authenticate(user: "bob", database: "postgres", credential: credential)
-
-        // Prepare a statement
-        let text = "SELECT city, temp_lo, temp_hi, prcp, date FROM weather WHERE city = $1;"
-        let statement = try await connection.prepareStatement(text: text)
-
-        // Bind the statement within a named portal.
-        let portal = try await statement.bind(parameterValues: ["San Francisco"])
-
-        // Obtain an AsyncSequence from the portal and iterate the results.
-        let cursor = try await portal.query()
-
-        for try await row in cursor {
-          let columns = row.columns
-          let city = try columns[0].string()
-          let tempLo = try columns[1].int()
-          let tempHi = try columns[2].int()
-          let prcp = try columns[3].optionalDouble()
-          let date = try columns[4].date()
-           print("""
-            \(city) on \(date): low: \(tempLo), high: \(tempHi), \
-            precipitation: \(String(describing: prcp))
-           """)
-        }
-    }
-    
     // Enable this to drop test schema if necessary
     func dropTestSchemata() async throws {
         
