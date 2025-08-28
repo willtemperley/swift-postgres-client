@@ -61,7 +61,7 @@ public struct PreparedStatement: Sendable {
         }
     }
     
-    func close() async throws {
+    public func close() async throws {
         if await closed {
             return
         }

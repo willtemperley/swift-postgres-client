@@ -20,7 +20,7 @@
 /// Execution of queries without using extended query protocol.
 extension Connection {
     
-    func execute(_ sql: String) async throws {
+    public func execute(_ sql: String) async throws {
         if state != .ready {
             throw PostgresError.invalidState("Expected ready state, got \(state)")
         }
@@ -30,7 +30,7 @@ extension Connection {
         try await receiveResponse(type: ReadyForQueryResponse.self)
     }
     
-    func query(_ sql: String) async throws -> ResultCursor {
+    public func query(_ sql: String) async throws -> ResultCursor {
         if state != .ready {
             throw PostgresError.invalidState("Expected ready state, got \(state)")
         }
