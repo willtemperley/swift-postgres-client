@@ -51,4 +51,6 @@ func readmeExample() async throws {
         precipitation: \(String(describing: prcp))
        """)
     }
+    
+    let rowCount = await cursor.rowCount
 }

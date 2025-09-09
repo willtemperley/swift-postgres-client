@@ -42,7 +42,7 @@ public struct ResultCursor: AsyncSequence, Sendable {
     ///
     /// If this `Cursor` has one or more rows, this property is `nil` until the final row has been
     /// retrieved (in other words, until `next()` returns `nil`).
-    var rowCount: Int? {
+    public var rowCount: Int? {
         get async {
             if let commandStatus {
                 return commandStatus.rowCount
