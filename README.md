@@ -29,6 +29,8 @@ This project has been adapted from PostgresClientKit, with the following changes
 
 This is a basic, but complete, example of how to connect to a PostgresSQL server, perform a SQL `SELECT` command, and process the resulting rows.  It uses the `weather` table in the [Postgres tutorial](https://www.postgresql.org/docs/current/tutorial-table.html).
 
+[A SwiftUI app](https://github.com/willtemperley/swift-postgres-client-example) has been created which uses this example. This is Swift 6 compatible.
+
 ```swift
 import SwiftPostgresClient
 
