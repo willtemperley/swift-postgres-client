@@ -36,8 +36,8 @@ extension Connection {
         }
         let queryRequest = QueryRequest(query: sql)
         try await sendRequest(queryRequest)
-        try await receiveResponse(type: RowDescriptionResponse.self)
+        let rowDesc = try await receiveResponse(type: RowDescriptionResponse.self)
         let response = await receiveResponse()
-        return ResultCursor(connection: self, portalName: "", extendedProtocol: false, initialResponse: response)
+        return ResultCursor(connection: self, portalName: "", extendedProtocol: false, metadata: rowDesc.columns, initialResponse: response)
     }
 }

@@ -28,7 +28,9 @@ import Foundation
 public struct Portal: Sendable {
     
     let name: String
-    let metadata: [ColumnMetadata]?
+    /// Column metadata for this portal, if available.
+    /// Pass `columnMetadata: true` to `PreparedStatement.bind()` to populate this.
+    public let metadata: [ColumnMetadata]?
     let statement: Statement
     unowned let connection: Connection
     

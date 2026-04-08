@@ -23,7 +23,9 @@ public struct ResultCursor: AsyncSequence, Sendable {
     let connection: Connection
     let portalName: String
     let extendedProtcol: Bool
-    let metatdata: [ColumnMetadata]?
+    /// Column metadata for the result set, if available.
+    /// Pass `columnMetadata: true` to `PreparedStatement.bind()` to populate this.
+    public let metatdata: [ColumnMetadata]?
     let rowDecoder: RowDecoder?
     let initialResponse: Response?
     let commandStatus: CommandStatus?
