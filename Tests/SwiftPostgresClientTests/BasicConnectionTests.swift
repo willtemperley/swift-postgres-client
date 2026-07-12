@@ -34,7 +34,8 @@ public struct BasicConnectionTests {
         .init(postgresPort: 5434, useTLS: true)  // Not running at all
     ]
     
-    @Test("Clean-fail invalid connections", arguments: invalidEnvironments) func cleanFail(environment: TestEnvironment) async throws {
+    @Test("Clean-fail invalid connections", arguments: invalidEnvironments)
+    func cleanFail(environment: TestEnvironment) async throws {
         
         let configurations = TestConfigurations(environment: environment)
         let config = configurations.sallyConnectionConfiguration

@@ -62,10 +62,8 @@ struct NetworkConnection: Sendable {
     
     func readData(count: Int) async throws -> Data {
         guard count > 0 else { return Data() }
-
         var buffer = Data()
         buffer.reserveCapacity(count)
-
         while buffer.count < count {
             let chunk = try await read(maxLength: count - buffer.count)
 
@@ -75,32 +73,26 @@ struct NetworkConnection: Sendable {
 
             buffer.append(chunk)
         }
-
         return buffer
     }
 
     func readASCIICharacter() async throws -> Character {
         let data = try await read(maxLength: 1)
-        
         guard let byte = data.first else {
             throw PostgresError.protocolError("No data received for response type")
         }
-
         let scalar = Unicode.Scalar(byte)
         guard scalar.isASCII else {
             throw PostgresError.protocolError("Invalid ASCII byte: \(byte)")
         }
-
         return Character(scalar)
     }
     
     func readUInt32() async throws -> UInt32 {
         let data = try await read(maxLength: 4)
-        
         guard data.count == 4 else {
             throw PostgresError.protocolError("Expected 4 bytes for UInt32, got \(data.count)")
         }
-        
         return data.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
     }
     

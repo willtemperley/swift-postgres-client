@@ -62,7 +62,7 @@ extension Connection {
         let describePortalRequest = DescribePortalRequest(name: portalName)
         try await sendRequest(describePortalRequest, flush: true)
         
-        let response = await receiveResponse()
+        let response = try await receiveResponse()
         
         switch response {
             

@@ -105,7 +105,7 @@ public struct ResultCursor: AsyncSequence, Sendable {
                 self.initialResponse = nil
                 return nextResponse
             } else {
-                return await connection.receiveResponse()
+                return try await connection.receiveResponse()
             }
         }
 

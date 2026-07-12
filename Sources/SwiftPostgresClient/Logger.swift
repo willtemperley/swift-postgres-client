@@ -19,7 +19,7 @@
 
 #if DEBUG
 #if canImport(os)
-import os
+internal import os
 private let logger = Logger(subsystem: "com.geolocalised.swiftpostgresclient", category: "debug")
 #endif
 #endif

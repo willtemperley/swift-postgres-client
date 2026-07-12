@@ -57,7 +57,7 @@ extension Connection {
         try await sendRequest(executeRequest, flush: true)
         
         // The first response of the query is evaluated eagerly to check its type.
-        let response = await receiveResponse()
+        let response = try await receiveResponse()
         
         // A zero-result query immediately gives a CommandCompleteResponse
         if response is CommandCompleteResponse {

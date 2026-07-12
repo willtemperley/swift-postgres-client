@@ -20,6 +20,7 @@
 import Foundation
 import Network
 import CryptoKit
+internal import os
 
 /// A Connection actor provides asynchronous access to a PostgreSQL server.
 public actor Connection {
@@ -34,7 +35,7 @@ public actor Connection {
     }
     
     private var messageQueue: [Response] = []
-    private var waiters: [CheckedContinuation<Response, Never>] = []
+    private var waiters: [CheckedContinuation<Response, Error>] = []
     private var socket: NetworkConnection
     
     let certificateHash: Data
@@ -90,13 +91,12 @@ public actor Connection {
     }
     
     public func close() async {
-        let terminateRequest = TerminateRequest()
-        try? await sendRequest(terminateRequest) // consumes any Error
-        state = .closed
+        try? await sendRequest(TerminateRequest())
+        tearDown()
         openStatements = .init()
         socket.cancel()
     }
-    
+
     var connected: Bool {
         socket.connected
     }
@@ -105,17 +105,25 @@ public actor Connection {
         state == .closed
     }
     
+    private func tearDown() {
+        state = .closed
+        let pending = waiters
+        waiters.removeAll()
+        for w in pending { w.resume(throwing: PostgresError.connectionClosed) }
+        notificationContinuation.finish()
+    }
+
     private func receiveLoop() async {
         while true {
             do {
                 try await decodeMessage()
             } catch {
-                print("Error receiving message: \(error)")
+                tearDown()
                 break
             }
         }
     }
-    
+
     private func handleIncoming(_ message: Response) {
         if !waiters.isEmpty {
             let continuation = waiters.removeFirst()
@@ -125,14 +133,18 @@ public actor Connection {
         }
     }
     
-    func receiveResponse() async -> Response {
+    func receiveResponse() async throws -> Response {
         if !messageQueue.isEmpty {
             let message = messageQueue.removeFirst()
             updateState(for: message)
             return message
         }
-        
-        return await withCheckedContinuation { continuation in
+        // If the connection already died, don't suspend on a continuation
+        // nobody will ever resume.
+        guard state != .closed else {
+            throw PostgresError.connectionClosed
+        }
+        return try await withCheckedThrowingContinuation { continuation in
             waiters.append(continuation)
         }
     }
@@ -141,13 +153,10 @@ public actor Connection {
         switch response {
         case is DataRowResponse, is RowDescriptionResponse:
             state = .awaitingQueryResult
-            
         case is ReadyForQueryResponse:
             state = .ready
-            
         case is ErrorResponse:
             state = .errorRecieved  // or maybe .errorRecovering?
-            
         default:
             // no change
             break
@@ -165,7 +174,7 @@ public actor Connection {
     @discardableResult
     func receiveResponse<T: Response>(type: T.Type) async throws -> T {
         while true {
-            let message = await receiveResponse()
+            let message = try await receiveResponse()
             
             // Publish server notices and parameter changes to the notifications AsyncStream
             switch message {
@@ -203,17 +212,19 @@ public actor Connection {
     }
     
     private func decodeMessage() async throws {
-        
         let responseType = try await socket.readASCIICharacter()
         let responseLength = try await socket.readUInt32()
         // The response length includes itself (4 bytes) but excludes the response type (1 byte).
+        guard responseLength >= 4 else {
+            throw PostgresError.protocolError("Invalid message length: \(responseLength)")
+        }
+        guard responseLength <= 0x7FFF_FFFF else {  // Int32 max — protocol ceiling
+            throw PostgresError.protocolError("Message length exceeds protocol maximum: \(responseLength)")
+        }
         let body = try await socket.readData(count: Int(responseLength) - 4)
         let responseBody = ResponseBody(responseType: responseType, data: body)
-        
         let response: Response
-        
         switch responseType {
-            
         case "1": response = try ParseCompleteResponse(responseBody: responseBody)
         case "2": response = try BindCompleteResponse(responseBody: responseBody)
         case "3": response = try CloseCompleteResponse(responseBody: responseBody)
@@ -229,12 +240,10 @@ public actor Connection {
         case "T": response = try RowDescriptionResponse(responseBody: responseBody)
         case "Z": response = try ReadyForQueryResponse(responseBody: responseBody)
         case "n": response = try NoDataResponse(responseBody: responseBody)
-            
         default:
             throw PostgresError.serverError(
                 description: "unrecognized response type '\(responseType)'")
         }
-        
         handleIncoming(response)
     }
     
@@ -250,34 +259,22 @@ public actor Connection {
         switch state {
         case .ready:
             return
-            
         case .querySent, .awaitingQueryResult, .errorRecieved:
             logWarning("State is \(state), emptying message queue and sending sync request.")
-            
             try await sendRequest(SyncRequest(), flush: true)
-            
-            // Cleanup all open portals
-//            for name in try await listOpenPortals() {
-//                try await sendRequest(ClosePortalRequest(name: name))
-//                try await sendRequest(FlushRequest())
-//            }
-
             // Drain all messages until ReadyForQuery
             while true {
                 guard connected else {
                     state = .closed
                     throw PostgresError.connectionClosed
                 }
-                let message = await receiveResponse()
+                let message = try await receiveResponse()
                 updateState(for: message)
                 if message is ReadyForQueryResponse { break }
             }
-
             precondition(state == .ready)
-
         case .closed:
             throw PostgresError.connectionClosed
-
         case .awaitingAuthentication:
             throw PostgresError.awaitingAuthentication
         }
@@ -290,43 +287,41 @@ public actor Connection {
 ///   - port: The port
 ///   - useTLS: Whether to use TLS (default: true)
 /// - Returns:connection in ready state and the server certificate hash.
-fileprivate func createPostgresConnection(host: String, port: UInt16, useTLS: Bool = true) async throws -> (NWConnection, Data) {
-    
+fileprivate func createPostgresConnection(
+    host: String,
+    port: UInt16,
+    useTLS: Bool = true,
+) async throws -> (NWConnection, Data) {
     let parameters: NWParameters
-    var certHash: Data? = nil
-    
+    let certHashBox = OSAllocatedUnfairLock<Data?>(initialState: useTLS ? nil : Data())
     if useTLS {
         let tlsOptions = NWProtocolTLS.Options()
         let secProtocolOptions = tlsOptions.securityProtocolOptions
-        
         "postgresql".withCString {
             sec_protocol_options_add_tls_application_protocol(secProtocolOptions, $0)
         }
-        
         sec_protocol_options_set_verify_block(
             secProtocolOptions,
             { metadata, trustRef, verifyComplete in
                 let trust = sec_trust_copy_ref(trustRef).takeRetainedValue()
                 let isLocalhost = ["localhost", "127.0.0.1", "::1"].contains(host)
-                
                 func complete(with cert: SecCertificate?) {
                     guard let cert = cert else {
                         verifyComplete(false)
                         return
                     }
-                    
                     let data = SecCertificateCopyData(cert) as Data
                     let hash = SHA256.hash(data: data)
-                    certHash = Data(hash)
+                    certHashBox.withLock { $0 = Data(hash) }
                     verifyComplete(true)
                 }
-                
+                let secCert = (SecTrustCopyCertificateChain(trust) as? [SecCertificate])?.first
                 if isLocalhost {
-                    complete(with: SecTrustGetCertificateAtIndex(trust, 0))
+                    complete(with: secCert)
                 } else {
                     var error: CFError?
                     if SecTrustEvaluateWithError(trust, &error) {
-                        complete(with: SecTrustGetCertificateAtIndex(trust, 0))
+                        complete(with: secCert)
                     } else {
                         verifyComplete(false)
                     }
@@ -334,36 +329,49 @@ fileprivate func createPostgresConnection(host: String, port: UInt16, useTLS: Bo
             },
             DispatchQueue.global(qos: .utility)
         )
-        
         parameters = NWParameters(tls: tlsOptions)
     } else {
         // Plain TCP connection
         parameters = NWParameters.tcp
-        certHash = Data() // Empty certificate hash for plain connections
     }
-    
-    let connection = NWConnection(host: .init(host), port: .init(rawValue: port)!, using: parameters)
-    
+    let connection = NWConnection(
+        host: .init(host),
+        port: .init(rawValue: port)!,
+        using: parameters
+    )
     try await withCheckedThrowingContinuation { cont in
         connection.stateUpdateHandler = { state in
             switch state {
             case .ready:
+                // Replace handler on connection to prevent the continuation
+                // being called more than once.
+                connection.stateUpdateHandler = { [weak connection] state in
+                    if case .failed = state {
+                        connection?.cancel()
+                    }
+                }
                 cont.resume(returning: ())
             case .failed(let error):
+                connection.stateUpdateHandler = nil
                 cont.resume(throwing: error)
             case .waiting(let reason):
+                // NWConnection considers this recoverable and would retry
+                // indefinitely. Nil out the state update handler to prevent
+                // an attempted resume and crash on the spent continuation.
+                connection.stateUpdateHandler = nil
                 cont.resume(throwing: reason)
+                connection.cancel()
             default:
                 break
             }
         }
-        
         connection.start(queue: .global(qos: .userInitiated))
     }
-    
-    guard let certHash = certHash else {
+    guard let certHash = certHashBox.withLock({ $0 }) else {
+        // Avoid leaking the live connection with no certificate available.
+        // Note that the localhost
+        connection.cancel()
         throw PostgresError.certificateRetrievalFailed
     }
-    
     return (connection, certHash)
 }

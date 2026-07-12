@@ -22,4 +22,5 @@ public enum ServerMessage: Sendable {
     case notice(description: String)
     case parameter(name: String, value: String)
     case backendKeyData(pid: UInt32, secretKey: UInt32)
+    case error(error: Error)
 }

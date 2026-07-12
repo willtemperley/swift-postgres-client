@@ -1,4 +1,4 @@
-// swift-tools-version: 5.5
+// swift-tools-version: 5.7
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "SwiftPostgresClient",
     platforms: [
-        .macOS(.v11), .iOS(.v14), .tvOS(.v14)
+        .macOS(.v13), .iOS(.v14), .tvOS(.v14)
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
